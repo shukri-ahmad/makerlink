@@ -1,0 +1,14 @@
+{
+    "name": "MakerLink",
+    "version": "1.0.0",
+    "description": "Bi-directional Bluetooth extension for MAKEROBOT Ecosystem by MAKERSPACE@UTHM.",
+    "dependencies": {
+        "core": "*",
+        "bluetooth": "*",
+        "motionbit": "github:cytrontechnologies/pxt-motionbit"
+    },
+    "files": [
+        "main.ts"
+    ],
+    "public": true
+}
