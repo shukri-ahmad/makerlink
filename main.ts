@@ -121,7 +121,7 @@ namespace makerlink {
         bluetooth.uartWriteString("INIT:" + getServoStr(servo) + ",SERVO," + start + "," + pos1 + "," + pos2 + "\n");
     }
 
-    // ==============================================
+ // ==============================================
     // ACTION BLOCKS (AUTO-CONTROL)
     // ==============================================
 
@@ -144,7 +144,8 @@ namespace makerlink {
         } else if (val < 0) {
             motionbit.runMotor(mbMotor, MotionBitMotorDirection.Backward, Math.abs(val));
         } else {
-            motionbit.stopMotor(mbMotor);
+            // FIX: Run at speed 0 to stop the motor, avoiding the stopMotor error!
+            motionbit.runMotor(mbMotor, MotionBitMotorDirection.Forward, 0);
         }
     }
 
