@@ -88,11 +88,12 @@ namespace makerlink {
     /**
      * Initialize a DC Motor Card
      */
-    //% block="⚙️ Init Motor Card $motor | Start $startVal | CW Speed $cw | CCW Speed $ccw"
+    //% block="⚙️ Init Motor Card $motor || Start $startVal CW Speed $cw CCW Speed $ccw"
     //% group="Setup (On Start)"
-    //% cw.defl=255 ccw.defl=-255
+    //% expandableArgumentMode="toggle"
+    //% startVal.defl=0 cw.defl=255 ccw.defl=-255
     //% weight=90
-    export function initMotor(motor: MotorID, startVal: number, cw: number, ccw: number): void {
+    export function initMotor(motor: MotorID, startVal: number = 0, cw: number = 255, ccw: number = -255): void {
         motorVals[motor] = startVal;
         bluetooth.uartWriteString("INIT:" + getMotorStr(motor) + ",MOTOR," + startVal + "," + cw + "," + ccw + "\n");
     }
@@ -100,16 +101,15 @@ namespace makerlink {
     /**
      * Initialize a Servo Card
      */
-    //% block="🦾 Init Servo Card $servo | Start Angle $start | Pos 1 $pos1 | Pos 2 $pos2"
+    //% block="🦾 Init Servo Card $servo || Start Angle $start Pos 1 $pos1 Pos 2 $pos2"
     //% group="Setup (On Start)"
+    //% expandableArgumentMode="toggle"
     //% start.defl=90 pos1.defl=0 pos2.defl=180
     //% weight=89
-    export function initServo(servo: ServoID, start: number, pos1: number, pos2: number): void {
+    export function initServo(servo: ServoID, start: number = 90, pos1: number = 0, pos2: number = 180): void {
         servoVals[servo] = start;
         bluetooth.uartWriteString("INIT:" + getServoStr(servo) + ",SERVO," + start + "," + pos1 + "," + pos2 + "\n");
     }
-
-    /**
      * Initialize an Analog Pin Card
      */
     //% block="🔌 Init Analog Card $pin | Mode $mode | Initial Val $val"
