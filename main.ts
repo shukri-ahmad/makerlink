@@ -110,6 +110,8 @@ namespace makerlink {
         servoVals[servo] = start;
         bluetooth.uartWriteString("INIT:" + getServoStr(servo) + ",SERVO," + start + "," + pos1 + "," + pos2 + "\n");
     }
+
+    /**
      * Initialize an Analog Pin Card
      */
     //% block="🔌 Init Analog Card $pin | Mode $mode | Initial Val $val"
