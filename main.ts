@@ -122,6 +122,33 @@ namespace makerlink {
     }
 
     // ==============================================
+    // ACTION BLOCKS (AUTO-CONTROL)
+    // ==============================================
+
+    /**
+     * Automatically runs the MotionBit motor based on the Web App value (-255 to 255)
+     */
+    //% block="MakerLink run MotionBit Motor $motor"
+    //% weight=75
+    export function runMotionBitMotor(motor: MotorID): void {
+        let val = motorVals[motor];
+        
+        // Map MakerLink MotorID to MotionBitMotorChannel
+        let mbMotor = MotionBitMotorChannel.M1;
+        if (motor == MotorID.M2) mbMotor = MotionBitMotorChannel.M2;
+        if (motor == MotorID.M3) mbMotor = MotionBitMotorChannel.M3;
+        if (motor == MotorID.M4) mbMotor = MotionBitMotorChannel.M4;
+                                              
+        if (val > 0) {
+            motionbit.runMotor(mbMotor, MotionBitMotorDirection.Forward, val);
+        } else if (val < 0) {
+            motionbit.runMotor(mbMotor, MotionBitMotorDirection.Backward, Math.abs(val));
+        } else {
+            motionbit.stopMotor(mbMotor);
+        }
+    }
+
+    // ==============================================
     // REPORTER VARIABLES (READ)
     // ==============================================
 
