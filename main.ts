@@ -134,7 +134,7 @@ namespace makerlink {
         bluetooth.uartWriteString("INIT:" + getDigitalStr(pin) + "," + mStr + "," + val + "\n");
     }
 
-    // ==============================================
+   // ==============================================
     // ACTION BLOCKS (AUTO-CONTROL & SYNC)
     // ==============================================
 
@@ -147,6 +147,10 @@ namespace makerlink {
     //% weight=80
     export function runMotorSync(motor: MotorID, speed: number): void {
         let val = Math.max(-255, Math.min(255, speed));
+        
+        // 1. Check if the value actually changed to prevent Bluetooth spam!
+        let changed = (motorVals[motor] !== val);
+        
         motorVals[motor] = val;
 
         let mbMotor = MotionBitMotorChannel.M1;
@@ -162,7 +166,10 @@ namespace makerlink {
             motionbit.runMotor(mbMotor, MotionBitMotorDirection.Forward, 0);
         }
 
-        sendMotor(motor, val);
+        // 2. Only send to Web App if the speed is different from before
+        if (changed) {
+            sendMotor(motor, val);
+        }
     }
 
     /**
@@ -174,6 +181,10 @@ namespace makerlink {
     //% weight=79
     export function setServoSync(servo: ServoID, angle: number): void {
         let val = Math.max(0, Math.min(180, angle));
+        
+        // 1. Check if the value actually changed
+        let changed = (servoVals[servo] !== val);
+        
         servoVals[servo] = val;
 
         let mbServo = MotionBitServoChannel.S1;
@@ -187,9 +198,11 @@ namespace makerlink {
 
         motionbit.setServoPosition(mbServo, val);
 
-        sendServo(servo, val);
+        // 2. Only send to Web App if the angle is different from before
+        if (changed) {
+            sendServo(servo, val);
+        }
     }
-
     // ==============================================
     // REPORTER VARIABLES (READ)
     // ==============================================
