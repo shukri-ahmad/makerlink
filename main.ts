@@ -96,14 +96,13 @@ namespace makerlink {
         });
         isInitialized = true;
     }
-
-    /**
+/**
      * Initialize a DC Motor Card
-     * @param startVal Initial motor speed, eg: 0
-     * @param cw Max Clockwise limit, eg: 255
-     * @param ccw Max Counter-Clockwise limit, eg: -255
+     * @param startVal Initial motor speed
+     * @param cw Max Clockwise limit
+     * @param ccw Max Counter-Clockwise limit
      */
-    //% block="⚙️ Init Motor Card $motor || Start $startVal CW Limit $cw CCW Limit $ccw"
+    //% block="⚙️ Init Motor Card $motor | Start $startVal | CW Limit $cw | CCW Limit $ccw"
     //% group="Setup (On Start)"
     //% weight=90
     export function initMotor(motor: MotorID, startVal: number = 0, cw: number = 255, ccw: number = -255): void {
@@ -115,11 +114,11 @@ namespace makerlink {
 
     /**
      * Initialize a Servo Card
-     * @param start Initial angle, eg: 90
-     * @param pos1 Preset Position 1, eg: 0
-     * @param pos2 Preset Position 2, eg: 180
+     * @param start Initial angle
+     * @param pos1 Preset Position 1
+     * @param pos2 Preset Position 2
      */
-    //% block="🦾 Init Servo Card $servo || Start Angle $start Pos 1 $pos1 Pos 2 $pos2"
+    //% block="🦾 Init Servo Card $servo | Start Angle $start | Pos 1 $pos1 | Pos 2 $pos2"
     //% group="Setup (On Start)"
     //% weight=89
     export function initServo(servo: ServoID, start: number = 90, pos1: number = 0, pos2: number = 180): void {
@@ -128,7 +127,8 @@ namespace makerlink {
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
     }
-
+    
+   
     /**
      * Initialize an Analog Data Stream
      * @param val Initial value, eg: 0
