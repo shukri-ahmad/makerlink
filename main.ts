@@ -325,4 +325,14 @@ namespace makerlink {
     export function sendServo(servo: ServoID, val: number): void {
         bluetooth.uartWriteString(getServoStr(servo) + ":" + val + "\n");
     }
+
+    /**
+     * Send a text message or error log to the Web App Terminal
+     */
+    //% block="📤 Update Dashboard Terminal with $msg"
+    //% group="Send (Update Dashboard)"
+    //% weight=56
+    export function sendTerminalMessage(msg: string): void {
+        bluetooth.uartWriteString("LOG:" + msg + "\n");
+    }
 }
