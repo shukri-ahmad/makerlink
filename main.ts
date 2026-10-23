@@ -99,10 +99,11 @@ namespace makerlink {
         isInitialized = true;
     }
 
+    /**
+     * Initialize a DC Motor Card
+     */
     //% block="⚙️ Init Motor Card $motor || Start $startVal CW Limit $cw CCW Limit $ccw"
     //% group="Setup (On Start)"
-    //% expandableArgumentMode="toggle"
-    //% startVal.defl=0 cw.defl=255 ccw.defl=-255
     //% weight=90
     export function initMotor(motor: MotorID, startVal: number = 0, cw: number = 255, ccw: number = -255): void {
         motorVals[motor] = startVal;
@@ -111,10 +112,11 @@ namespace makerlink {
         bluetooth.uartWriteString(cmd + "\n");
     }
 
+    /**
+     * Initialize a Servo Card
+     */
     //% block="🦾 Init Servo Card $servo || Start Angle $start Pos 1 $pos1 Pos 2 $pos2"
     //% group="Setup (On Start)"
-    //% expandableArgumentMode="toggle"
-    //% start.defl=90 pos1.defl=0 pos2.defl=180
     //% weight=89
     export function initServo(servo: ServoID, start: number = 90, pos1: number = 0, pos2: number = 180): void {
         servoVals[servo] = start;
@@ -122,6 +124,8 @@ namespace makerlink {
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
     }
+    
+   
 
     //% block="📊 Init Analog Stream $stream | Mode $mode | Initial Val $val"
     //% group="Setup (On Start)"
