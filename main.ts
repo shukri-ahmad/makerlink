@@ -2,6 +2,9 @@
 //% groups='["Setup (On Start)", "Write (Actions)", "Read (Variables)", "Send (Update Dashboard)"]'
 namespace makerlink {
     
+    // ==============================================
+    // DROPDOWN MENUS (ENUMS)
+    // ==============================================
     export enum MotorID { M1, M2, M3, M4 }
     export enum ServoID { S1, S2, S3, S4, S5, S6, S7, S8 }
     export enum MLPinMode { IN, OUT }
@@ -9,10 +12,9 @@ namespace makerlink {
     export enum MLDigitalStream { D1, D2, D3, D4, D5, D6, D7, D8 }
     export enum MLTextStream { T1, T2, T3, T4 }
 
-    let initCommands: string[] = []; // Remembers the dashboard layout for SYNC
+    let initCommands: string[] = []; 
     let isInitialized = false;
 
-    // Internal Memory
     let motorVals = [0, 0, 0, 0];
     let servoVals = [90, 90, 90, 90, 90, 90, 90, 90];
     let analogVals = [0, 0, 0, 0, 0, 0, 0, 0];
@@ -29,7 +31,6 @@ namespace makerlink {
         if (parts.length < 2) return;
         let cardId = parts[1].split(",")[0];
         
-        // Replace if exists, else push
         let replaced = false;
         for(let i=0; i<initCommands.length; i++) {
             if(initCommands[i].indexOf("INIT:" + cardId) === 0) {
@@ -80,14 +81,11 @@ namespace makerlink {
         bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () {
             let cmd = bluetooth.uartReadUntil(serial.delimiters(Delimiters.NewLine)).trim();
             
-            // The Web App Handshake
             if (cmd === "SYNC") {
-                // 1. Send UI Builders
                 for(let i=0; i<initCommands.length; i++) {
                     bluetooth.uartWriteString(initCommands[i] + "\n");
                     basic.pause(30); 
                 }
-                // 2. Refresh physical states
                 for(let i=0; i<4; i++) { bluetooth.uartWriteString("M"+(i+1)+":"+motorVals[i]+"\n"); basic.pause(10); }
                 for(let i=0; i<8; i++) { bluetooth.uartWriteString("S"+(i+1)+":"+servoVals[i]+"\n"); basic.pause(10); }
                 for(let i=0; i<8; i++) { bluetooth.uartWriteString("A"+(i+1)+":"+analogVals[i]+"\n"); basic.pause(10); }
@@ -101,6 +99,9 @@ namespace makerlink {
 
     /**
      * Initialize a DC Motor Card
+     * @param startVal Initial motor speed, eg: 0
+     * @param cw Max Clockwise limit, eg: 255
+     * @param ccw Max Counter-Clockwise limit, eg: -255
      */
     //% block="⚙️ Init Motor Card $motor || Start $startVal CW Limit $cw CCW Limit $ccw"
     //% group="Setup (On Start)"
@@ -114,6 +115,9 @@ namespace makerlink {
 
     /**
      * Initialize a Servo Card
+     * @param start Initial angle, eg: 90
+     * @param pos1 Preset Position 1, eg: 0
+     * @param pos2 Preset Position 2, eg: 180
      */
     //% block="🦾 Init Servo Card $servo || Start Angle $start Pos 1 $pos1 Pos 2 $pos2"
     //% group="Setup (On Start)"
@@ -124,9 +128,11 @@ namespace makerlink {
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
     }
-    
-   
 
+    /**
+     * Initialize an Analog Data Stream
+     * @param val Initial value, eg: 0
+     */
     //% block="📊 Init Analog Stream $stream | Mode $mode | Initial Val $val"
     //% group="Setup (On Start)"
     //% weight=88
@@ -138,6 +144,10 @@ namespace makerlink {
         bluetooth.uartWriteString(cmd + "\n");
     }
 
+    /**
+     * Initialize a Digital Data Stream
+     * @param val Initial value, eg: 0
+     */
     //% block="🚥 Init Digital Stream $stream | Mode $mode | Initial Val $val"
     //% group="Setup (On Start)"
     //% weight=87
@@ -149,6 +159,10 @@ namespace makerlink {
         bluetooth.uartWriteString(cmd + "\n");
     }
 
+    /**
+     * Initialize a Text Data Stream
+     * @param val Initial text, eg: "HELLO"
+     */
     //% block="📝 Init Text Stream $stream | Initial Text $val"
     //% group="Setup (On Start)"
     //% weight=86
@@ -198,6 +212,40 @@ namespace makerlink {
         if (servo == ServoID.S8) mbServo = MotionBitServoChannel.S8;
 
         motionbit.setServoPosition(mbServo, val);
+    }
+
+    //% block="MakerLink write analog stream $stream to $val"
+    //% group="Write (Actions)"
+    //% val.min=0 val.max=1023
+    //% weight=78
+    export function writeAnalog(stream: MLAnalogStream, val: number): void {
+        let v = Math.max(0, Math.min(1023, val));
+        analogVals[stream] = v; 
+        let ap = AnalogPin.P0;
+        if (stream == MLAnalogStream.A2) ap = AnalogPin.P1;
+        if (stream == MLAnalogStream.A3) ap = AnalogPin.P2;
+        pins.analogWritePin(ap, v);
+    }
+
+    //% block="MakerLink write digital stream $stream to $val"
+    //% group="Write (Actions)"
+    //% val.min=0 val.max=1
+    //% weight=77
+    export function writeDigital(stream: MLDigitalStream, val: number): void {
+        let v = val > 0 ? 1 : 0; 
+        if(stream == MLDigitalStream.D1) digitalVals[0] = v;
+        else if(stream == MLDigitalStream.D2) digitalVals[1] = v;
+        else if(stream == MLDigitalStream.D3) digitalVals[2] = v;
+        else if(stream == MLDigitalStream.D4) digitalVals[3] = v;
+        else if(stream == MLDigitalStream.D5) digitalVals[4] = v;
+        else if(stream == MLDigitalStream.D6) digitalVals[5] = v;
+        let dp = DigitalPin.P9;
+        if (stream == MLDigitalStream.D2) dp = DigitalPin.P12;
+        if (stream == MLDigitalStream.D3) dp = DigitalPin.P13;
+        if (stream == MLDigitalStream.D4) dp = DigitalPin.P14;
+        if (stream == MLDigitalStream.D5) dp = DigitalPin.P15;
+        if (stream == MLDigitalStream.D6) dp = DigitalPin.P16;
+        pins.digitalWritePin(dp, v);
     }
 
     // ==============================================
