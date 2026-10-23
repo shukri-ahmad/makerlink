@@ -134,24 +134,20 @@ namespace makerlink {
         bluetooth.uartWriteString("INIT:" + getDigitalStr(pin) + "," + mStr + "," + val + "\n");
     }
 
-   // ==============================================
-    // ACTION BLOCKS (AUTO-CONTROL & SYNC)
+  // ==============================================
+    // ACTION BLOCKS (AUTO-CONTROL ONLY)
     // ==============================================
 
     /**
-     * Runs the motor (-255 to 255) and instantly syncs the dashboard.
+     * Runs the motor (-255 to 255). Use "Update Dashboard" to sync to Web App.
      */
     //% block="MakerLink run motor $motor at speed $speed"
     //% group="Write (Actions)"
     //% speed.min=-255 speed.max=255
     //% weight=80
-    export function runMotorSync(motor: MotorID, speed: number): void {
+    export function runMotor(motor: MotorID, speed: number): void {
         let val = Math.max(-255, Math.min(255, speed));
-        
-        // 1. Check if the value actually changed to prevent Bluetooth spam!
-        let changed = (motorVals[motor] !== val);
-        
-        motorVals[motor] = val;
+        motorVals[motor] = val; // Keep internal state updated so 'forever' loop doesn't break
 
         let mbMotor = MotionBitMotorChannel.M1;
         if (motor == MotorID.M2) mbMotor = MotionBitMotorChannel.M2;
@@ -165,27 +161,18 @@ namespace makerlink {
         } else {
             motionbit.runMotor(mbMotor, MotionBitMotorDirection.Forward, 0);
         }
-
-        // 2. Only send to Web App if the speed is different from before
-        if (changed) {
-            sendMotor(motor, val);
-        }
     }
 
     /**
-     * Sets the servo angle (0 to 180) and instantly syncs the dashboard.
+     * Sets the servo angle (0 to 180). Use "Update Dashboard" to sync to Web App.
      */
     //% block="MakerLink set servo $servo to $angle degrees"
     //% group="Write (Actions)"
     //% angle.min=0 angle.max=180
     //% weight=79
-    export function setServoSync(servo: ServoID, angle: number): void {
+    export function setServo(servo: ServoID, angle: number): void {
         let val = Math.max(0, Math.min(180, angle));
-        
-        // 1. Check if the value actually changed
-        let changed = (servoVals[servo] !== val);
-        
-        servoVals[servo] = val;
+        servoVals[servo] = val; // Keep internal state updated
 
         let mbServo = MotionBitServoChannel.S1;
         if (servo == ServoID.S2) mbServo = MotionBitServoChannel.S2;
@@ -197,11 +184,6 @@ namespace makerlink {
         if (servo == ServoID.S8) mbServo = MotionBitServoChannel.S8;
 
         motionbit.setServoPosition(mbServo, val);
-
-        // 2. Only send to Web App if the angle is different from before
-        if (changed) {
-            sendServo(servo, val);
-        }
     }
     // ==============================================
     // REPORTER VARIABLES (READ)
