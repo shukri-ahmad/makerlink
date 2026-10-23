@@ -88,7 +88,7 @@ namespace makerlink {
     /**
      * Initialize a DC Motor Card
      */
-    //% block="⚙️ Init Motor Card $motor || Start $startVal CW Speed $cw CCW Speed $ccw"
+    //% block="⚙️ Init Motor Card $motor \vert{}\vert{} Start$startVal CW Speed $cw CCW Speed$ccw"
     //% group="Setup (On Start)"
     //% expandableArgumentMode="toggle"
     //% startVal.defl=0 cw.defl=255 ccw.defl=-255
@@ -101,7 +101,7 @@ namespace makerlink {
     /**
      * Initialize a Servo Card
      */
-    //% block="🦾 Init Servo Card $servo || Start Angle $start Pos 1 $pos1 Pos 2 $pos2"
+    //% block="🦾 Init Servo Card $servo \vert{}\vert{} Start Angle$start Pos 1 $pos1 Pos 2$pos2"
     //% group="Setup (On Start)"
     //% expandableArgumentMode="toggle"
     //% start.defl=90 pos1.defl=0 pos2.defl=180
@@ -114,7 +114,7 @@ namespace makerlink {
     /**
      * Initialize an Analog Pin Card
      */
-    //% block="🔌 Init Analog Card $pin | Mode $mode | Initial Val $val"
+    //% block="🔌 Init Analog Card $pin | Mode $mode \vert{} Initial Val$val"
     //% group="Setup (On Start)"
     //% weight=88
     export function initAnalog(pin: MLAnalogPin, mode: MLPinMode, val: number): void {
@@ -126,7 +126,7 @@ namespace makerlink {
     /**
      * Initialize a Digital Pin Card
      */
-    //% block="🔌 Init Digital Card $pin | Mode $mode | Initial Val $val"
+    //% block="🔌 Init Digital Card $pin | Mode $mode \vert{} Initial Val$val"
     //% group="Setup (On Start)"
     //% weight=87
     export function initDigital(pin: MLDigitalPin, mode: MLPinMode, val: number): void {
@@ -134,20 +134,20 @@ namespace makerlink {
         bluetooth.uartWriteString("INIT:" + getDigitalStr(pin) + "," + mStr + "," + val + "\n");
     }
 
-  // ==============================================
+    // ==============================================
     // ACTION BLOCKS (AUTO-CONTROL ONLY)
     // ==============================================
 
     /**
      * Runs the motor (-255 to 255). Use "Update Dashboard" to sync to Web App.
      */
-    //% block="MakerLink run motor $motor at speed $speed"
+    //% block="MakerLink run motor $motor at speed$speed"
     //% group="Write (Actions)"
     //% speed.min=-255 speed.max=255
     //% weight=80
     export function runMotor(motor: MotorID, speed: number): void {
         let val = Math.max(-255, Math.min(255, speed));
-        motorVals[motor] = val; // Keep internal state updated so 'forever' loop doesn't break
+        motorVals[motor] = val; // Keep internal state updated
 
         let mbMotor = MotionBitMotorChannel.M1;
         if (motor == MotorID.M2) mbMotor = MotionBitMotorChannel.M2;
@@ -166,115 +166,5 @@ namespace makerlink {
     /**
      * Sets the servo angle (0 to 180). Use "Update Dashboard" to sync to Web App.
      */
-    //% block="MakerLink set servo $servo to $angle degrees"
-    //% group="Write (Actions)"
-    //% angle.min=0 angle.max=180
-    //% weight=79
-    export function setServo(servo: ServoID, angle: number): void {
-        let val = Math.max(0, Math.min(180, angle));
-        servoVals[servo] = val; // Keep internal state updated
-
-        let mbServo = MotionBitServoChannel.S1;
-        if (servo == ServoID.S2) mbServo = MotionBitServoChannel.S2;
-        if (servo == ServoID.S3) mbServo = MotionBitServoChannel.S3;
-        if (servo == ServoID.S4) mbServo = MotionBitServoChannel.S4;
-        if (servo == ServoID.S5) mbServo = MotionBitServoChannel.S5;
-        if (servo == ServoID.S6) mbServo = MotionBitServoChannel.S6;
-        if (servo == ServoID.S7) mbServo = MotionBitServoChannel.S7;
-        if (servo == ServoID.S8) mbServo = MotionBitServoChannel.S8;
-
-        motionbit.setServoPosition(mbServo, val);
-    }
-    // ==============================================
-    // REPORTER VARIABLES (READ)
-    // ==============================================
-
-    /**
-     * Read the latest Motor value received from the Web App
-     */
-    //% block="MakerLink Motor $motor value"
-    //% group="Read (Variables)"
-    //% weight=70
-    export function getMotorValue(motor: MotorID): number {
-        return motorVals[motor];
-    }
-
-    /**
-     * Read the latest Servo angle received from the Web App
-     */
-    //% block="MakerLink Servo $servo value"
-    //% group="Read (Variables)"
-    //% weight=69
-    export function getServoValue(servo: ServoID): number {
-        return servoVals[servo];
-    }
-
-    /**
-     * Read the latest Analog Pin value received from the Web App
-     */
-    //% block="MakerLink Analog $pin value"
-    //% group="Read (Variables)"
-    //% weight=68
-    export function getAnalogValue(pin: MLAnalogPin): number {
-        return analogVals[pin];
-    }
-
-    /**
-     * Read the latest Digital Pin state received from the Web App
-     */
-    //% block="MakerLink Digital $pin value"
-    //% group="Read (Variables)"
-    //% weight=67
-    export function getDigitalValue(pin: MLDigitalPin): number {
-        if(pin == MLDigitalPin.P9) return digitalVals[0];
-        if(pin == MLDigitalPin.P12) return digitalVals[1];
-        if(pin == MLDigitalPin.P13) return digitalVals[2];
-        if(pin == MLDigitalPin.P14) return digitalVals[3];
-        if(pin == MLDigitalPin.P15) return digitalVals[4];
-        return digitalVals[5];
-    }
-
-    // ==============================================
-    // SEND BLOCKS (UPDATE DASHBOARD)
-    // ==============================================
-
-    /**
-     * Send Analog Sensor data to update the Web App Chart
-     */
-    //% block="📤 Update Dashboard Analog $pin to $val"
-    //% group="Send (Update Dashboard)"
-    //% weight=60
-    export function sendAnalog(pin: MLAnalogPin, val: number): void {
-        bluetooth.uartWriteString(getAnalogStr(pin) + ":" + val + "\n");
-    }
-
-    /**
-     * Send Digital Sensor data to update the Web App State
-     */
-    //% block="📤 Update Dashboard Digital $pin to $val"
-    //% group="Send (Update Dashboard)"
-    //% weight=59
-    export function sendDigital(pin: MLDigitalPin, val: number): void {
-        bluetooth.uartWriteString(getDigitalStr(pin) + ":" + val + "\n");
-    }
-
-    /**
-     * Override the Web App Motor slider position
-     */
-    //% block="📤 Update Dashboard Motor $motor to $val"
-    //% group="Send (Update Dashboard)"
-    //% weight=58
-    export function sendMotor(motor: MotorID, val: number): void {
-        bluetooth.uartWriteString(getMotorStr(motor) + ":" + val + "\n");
-    }
-
-    /**
-     * Override the Web App Servo angle text
-     */
-    //% block="📤 Update Dashboard Servo $servo to $val"
-    //% group="Send (Update Dashboard)"
-    //% weight=57
-    export function sendServo(servo: ServoID, val: number): void {
-        bluetooth.uartWriteString(getServoStr(servo) + ":" + val + "\n");
-    }
-}
+    //% block="MakerLink set servo $servo to$angle degrees"
+    //% group="
