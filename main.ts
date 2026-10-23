@@ -70,7 +70,7 @@ namespace makerlink {
         }
     }
 
-    // ==============================================
+   // ==============================================
     // SETUP BLOCKS (on start)
     // ==============================================
 
@@ -87,7 +87,6 @@ namespace makerlink {
         bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () {
             let cmd = bluetooth.uartReadUntil(serial.delimiters(Delimiters.NewLine)).trim();
             
-            // If Web App yells "SYNC", deal out the cards and states!
             if (cmd === "SYNC") {
                 for(let i=0; i<initCommands.length; i++) {
                     bluetooth.uartWriteString(initCommands[i] + "\n");
@@ -107,12 +106,11 @@ namespace makerlink {
     /**
      * Initialize a DC Motor Card
      */
-    //% block="⚙️ Init Motor Card $motor || Start $startVal CW Speed $cw CCW Speed $ccw"
-    //% group="Setup (On Start)"
-    //% expandableArgumentMode="toggle"
+    //% block="⚙️ Init Motor Card $motor | Start $startVal | CW Limit $cw | CCW Limit $ccw"
     //% startVal.defl=0 cw.defl=255 ccw.defl=-255
+    //% group="Setup (On Start)"
     //% weight=90
-    export function initMotor(motor: MotorID, startVal: number = 0, cw: number = 255, ccw: number = -255): void {
+    export function initMotor(motor: MotorID, startVal: number, cw: number, ccw: number): void {
         motorVals[motor] = startVal;
         let cmd = "INIT:" + getMotorStr(motor) + ",MOTOR," + startVal + "," + cw + "," + ccw;
         saveInitCmd(cmd);
@@ -122,12 +120,11 @@ namespace makerlink {
     /**
      * Initialize a Servo Card
      */
-    //% block="🦾 Init Servo Card $servo || Start Angle $start Pos 1 $pos1 Pos 2 $pos2"
-    //% group="Setup (On Start)"
-    //% expandableArgumentMode="toggle"
+    //% block="🦾 Init Servo Card $servo | Start Angle $start | Pos 1 $pos1 | Pos 2 $pos2"
     //% start.defl=90 pos1.defl=0 pos2.defl=180
+    //% group="Setup (On Start)"
     //% weight=89
-    export function initServo(servo: ServoID, start: number = 90, pos1: number = 0, pos2: number = 180): void {
+    export function initServo(servo: ServoID, start: number, pos1: number, pos2: number): void {
         servoVals[servo] = start;
         let cmd = "INIT:" + getServoStr(servo) + ",SERVO," + start + "," + pos1 + "," + pos2;
         saveInitCmd(cmd);
@@ -138,10 +135,10 @@ namespace makerlink {
      * Initialize an Analog Data Stream
      */
     //% block="📊 Init Analog Stream $stream | Mode $mode | Initial Val $val"
-    //% group="Setup (On Start)"
     //% val.defl=0
+    //% group="Setup (On Start)"
     //% weight=88
-    export function initAnalog(stream: MLAnalogStream, mode: MLPinMode, val: number = 0): void {
+    export function initAnalog(stream: MLAnalogStream, mode: MLPinMode, val: number): void {
         analogVals[stream] = val;
         let mStr = mode == MLPinMode.IN ? "IN" : "OUT";
         let cmd = "INIT:" + getAnalogStr(stream) + "," + mStr + "," + val;
@@ -153,10 +150,10 @@ namespace makerlink {
      * Initialize a Digital Data Stream
      */
     //% block="🚥 Init Digital Stream $stream | Mode $mode | Initial Val $val"
-    //% group="Setup (On Start)"
     //% val.defl=0
+    //% group="Setup (On Start)"
     //% weight=87
-    export function initDigital(stream: MLDigitalStream, mode: MLPinMode, val: number = 0): void {
+    export function initDigital(stream: MLDigitalStream, mode: MLPinMode, val: number): void {
         digitalVals[stream] = val;
         let mStr = mode == MLPinMode.IN ? "IN" : "OUT";
         let cmd = "INIT:" + getDigitalStr(stream) + "," + mStr + "," + val;
