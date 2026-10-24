@@ -364,4 +364,15 @@ namespace makerlink {
     export function sendTerminalMessage(msg: string): void {
         bluetooth.uartWriteString("LOG:" + msg + "\n");
     }
+
+    /**
+     * Sends a custom text log to the Web Dashboard Terminal.
+     * @param msg The message to send
+     */
+    //% block="📤 Update Dashboard Terminal $msg"
+    //% group="Communication & Telemetry"
+    //% weight=70
+    export function sendTerminalLog(msg: string): void {
+        bluetooth.uartWriteString("LOG:" + msg + "\n");
+    }
 }
