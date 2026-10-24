@@ -74,7 +74,7 @@ namespace makerlink {
     // SETUP BLOCKS (on start)
     // ==============================================
 
-    /**
+   /**
      * Initializes MakerLink Bluetooth and listens for the Web App SYNC handshake.
      */
     //% block="📡 MakerLink: Initialize"
@@ -88,14 +88,12 @@ namespace makerlink {
             let cmd = bluetooth.uartReadUntil(serial.delimiters(Delimiters.NewLine)).trim();
             
             if (cmd === "SYNC") {
+                // ONLY send the required cards. 
+                // Removed the 28 redundant state updates that caused the 5-second traffic jam!
                 for(let i=0; i<initCommands.length; i++) {
                     bluetooth.uartWriteString(initCommands[i] + "\n");
                     basic.pause(30); 
                 }
-                for(let i=0; i<4; i++) { bluetooth.uartWriteString("M"+(i+1)+":"+motorVals[i]+"\n"); basic.pause(10); }
-                for(let i=0; i<8; i++) { bluetooth.uartWriteString("S"+(i+1)+":"+servoVals[i]+"\n"); basic.pause(10); }
-                for(let i=0; i<8; i++) { bluetooth.uartWriteString("A"+(i+1)+":"+analogVals[i]+"\n"); basic.pause(10); }
-                for(let i=0; i<8; i++) { bluetooth.uartWriteString("D"+(i+1)+":"+digitalVals[i]+"\n"); basic.pause(10); }
             } else {
                 parseCommand(cmd);
             }
