@@ -38,7 +38,13 @@ namespace MakerLink {
                 let valStr = data.substr(sepIdx + 1, data.length - sepIdx - 1);
                 
                 if (id !== "SYNC") {
-                    let val = parseInt(valStr);
+                    // Clean string to prevent \r carriage returns from breaking negative parsing
+                    let cleanStr = "";
+                    for(let i = 0; i < valStr.length; i++) {
+                        let c = valStr.charAt(i);
+                        if((c >= '0' && c <= '9') || c == '-') cleanStr += c;
+                    }
+                    let val = parseInt(cleanStr);
                     let prefix = id.charAt(0);
                     let num = parseInt(id.substr(1, id.length - 1)) - 1; // 0-indexed for arrays
                     
@@ -47,8 +53,8 @@ namespace MakerLink {
                     else if (prefix == "A" && num >= 0 && num < 8) analogVals[num] = val;
                     else if (prefix == "D" && num >= 0 && num < 8) digitalVals[num] = val;
                 } else {
-                    // Re-trigger layout broadcast if Web App connects late
                     bluetooth.uartWriteString("LOG:Hardware Sync Acknowledged\n");
+                    basic.pause(50);
                 }
             }
         });
@@ -69,6 +75,7 @@ namespace MakerLink {
         let safeCCW = Math.min(255, Math.max(0, Math.abs(ccwSpeed)));
         let safeCW = Math.min(255, Math.max(0, Math.abs(cwSpeed)));
         bluetooth.uartWriteString("INIT:" + id + "," + safeStart + "," + safeCCW + "," + safeCW + "\n");
+        basic.pause(50); // PREVENTS BLUETOOTH BUFFER OVERFLOW
     }
 
     /**
@@ -86,6 +93,7 @@ namespace MakerLink {
         let safePos1 = Math.min(180, Math.max(0, Math.abs(pos1)));
         let safePos2 = Math.min(180, Math.max(0, Math.abs(pos2)));
         bluetooth.uartWriteString("INIT:" + id + "," + safeStart + "," + safePos1 + "," + safePos2 + "\n");
+        basic.pause(50);
     }
 
     /**
@@ -99,6 +107,7 @@ namespace MakerLink {
         let id = "A" + (port + 1);
         let modeStr = mode === StreamMode.IN ? "IN" : "OUT";
         bluetooth.uartWriteString("INIT:" + id + "," + modeStr + "," + startVal + "\n");
+        basic.pause(50);
     }
 
     /**
@@ -112,6 +121,7 @@ namespace MakerLink {
         let id = "D" + (port + 1);
         let modeStr = mode === StreamMode.IN ? "IN" : "OUT";
         bluetooth.uartWriteString("INIT:" + id + "," + modeStr + "," + startVal + "\n");
+        basic.pause(50);
     }
 
     /**
@@ -123,6 +133,7 @@ namespace MakerLink {
     export function initTextStream(port: TextPort, startVal: string): void {
         let id = "T" + (port + 1);
         bluetooth.uartWriteString("INIT:" + id + "," + startVal + "\n");
+        basic.pause(50);
     }
 
     // ==========================================
@@ -177,6 +188,7 @@ namespace MakerLink {
     export function updateDashboardAnalog(port: AnalogPort, val: number): void {
         let id = "A" + (port + 1);
         bluetooth.uartWriteString(id + ":" + val + "\n");
+        basic.pause(20);
     }
 
     /**
@@ -188,6 +200,7 @@ namespace MakerLink {
     export function updateDashboardDigital(port: DigitalPort, val: number): void {
         let id = "D" + (port + 1);
         bluetooth.uartWriteString(id + ":" + val + "\n");
+        basic.pause(20);
     }
 
     /**
@@ -198,6 +211,7 @@ namespace MakerLink {
     export function updateDashboardMotor(port: MotorPort, val: number): void {
         let id = "M" + (port + 1);
         bluetooth.uartWriteString(id + ":" + val + "\n");
+        basic.pause(20);
     }
 
     /**
@@ -208,6 +222,7 @@ namespace MakerLink {
     export function updateDashboardServo(port: ServoPort, val: number): void {
         let id = "S" + (port + 1);
         bluetooth.uartWriteString(id + ":" + val + "\n");
+        basic.pause(20);
     }
 
     /**
@@ -218,6 +233,7 @@ namespace MakerLink {
     export function updateDashboardText(port: TextPort, msg: string): void {
         let id = "T" + (port + 1);
         bluetooth.uartWriteString(id + ":" + msg + "\n");
+        basic.pause(20);
     }
 
     /**
@@ -227,5 +243,6 @@ namespace MakerLink {
     //% group="Send (To Web)"
     export function sendTerminalLog(msg: string): void {
         bluetooth.uartWriteString("LOG:" + msg + "\n");
+        basic.pause(20);
     }
 }
