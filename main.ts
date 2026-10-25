@@ -54,10 +54,10 @@ namespace MakerLink {
         });
     }
 
- /**
+    /**
      * Creates a custom Motor Control card on the dashboard.
      */
-    //% block="⚙️ Init Motor Card $port start speed:$startSpeed CCW speed: $ccwSpeed CW speed:$cwSpeed"
+    //% block="⚙️ Init Motor Card $port start speed: $startSpeed CCW speed: $ccwSpeed CW speed: $cwSpeed"
     //% startSpeed.min=-255 startSpeed.max=255 startSpeed.defl=0
     //% ccwSpeed.min=0 ccwSpeed.max=255 ccwSpeed.defl=255
     //% cwSpeed.min=0 cwSpeed.max=255 cwSpeed.defl=255
@@ -74,7 +74,7 @@ namespace MakerLink {
     /**
      * Creates a Servo Control card on the dashboard.
      */
-    //% block="🦾 Init Servo Card $port start angle:$startAngle Pos 1: $pos1 Pos 2:$pos2"
+    //% block="🦾 Init Servo Card $port start angle: $startAngle Pos 1: $pos1 Pos 2: $pos2"
     //% startAngle.min=0 startAngle.max=180 startAngle.defl=90
     //% pos1.min=0 pos1.max=180 pos1.defl=0
     //% pos2.min=0 pos2.max=180 pos2.defl=180
@@ -87,6 +87,7 @@ namespace MakerLink {
         let safePos2 = Math.min(180, Math.max(0, Math.abs(pos2)));
         bluetooth.uartWriteString("INIT:" + id + "," + safeStart + "," + safePos1 + "," + safePos2 + "\n");
     }
+
     /**
      * Creates an Analog Stream card (Chart or Slider).
      */
@@ -196,6 +197,16 @@ namespace MakerLink {
     //% group="Send (To Web)"
     export function updateDashboardMotor(port: MotorPort, val: number): void {
         let id = "M" + (port + 1);
+        bluetooth.uartWriteString(id + ":" + val + "\n");
+    }
+
+    /**
+     * Force the dashboard servo UI to change.
+     */
+    //% block="📤 Override Dashboard Servo $port value: $val"
+    //% group="Send (To Web)"
+    export function updateDashboardServo(port: ServoPort, val: number): void {
+        let id = "S" + (port + 1);
         bluetooth.uartWriteString(id + ":" + val + "\n");
     }
 
