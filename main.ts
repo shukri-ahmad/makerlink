@@ -89,7 +89,6 @@ namespace makerlink {
             
             if (cmd === "SYNC") {
                 // ONLY send the required cards. 
-                // Removed the 28 redundant state updates that caused the 5-second traffic jam!
                 for(let i=0; i<initCommands.length; i++) {
                     bluetooth.uartWriteString(initCommands[i] + "\n");
                     basic.pause(30); 
@@ -190,7 +189,7 @@ namespace makerlink {
         if (motor == MotorID.M2) mbMotor = MotionBitMotorChannel.M2;
         if (motor == MotorID.M3) mbMotor = MotionBitMotorChannel.M3;
         if (motor == MotorID.M4) mbMotor = MotionBitMotorChannel.M4;
-                                              
+                                                      
         if (val > 0) motionbit.runMotor(mbMotor, MotionBitMotorDirection.Forward, val);
         else if (val < 0) motionbit.runMotor(mbMotor, MotionBitMotorDirection.Backward, Math.abs(val));
         else motionbit.runMotor(mbMotor, MotionBitMotorDirection.Forward, 0);
@@ -233,7 +232,6 @@ namespace makerlink {
         let ap = AnalogPin.P0;
         if (stream == MLAnalogStream.A2) ap = AnalogPin.P1;
         if (stream == MLAnalogStream.A3) ap = AnalogPin.P2;
-        // P3+ skipped mapping to avoid MakeCode pin conflicts
         pins.analogWritePin(ap, v);
     }
 
