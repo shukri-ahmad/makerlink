@@ -88,10 +88,30 @@ namespace makerlink {
             let cmd = bluetooth.uartReadUntil(serial.delimiters(Delimiters.NewLine)).trim();
             
             if (cmd === "SYNC") {
-                // ONLY send the required cards. 
+                // 1. Send the UI Layout Cards
                 for(let i=0; i<initCommands.length; i++) {
                     bluetooth.uartWriteString(initCommands[i] + "\n");
                     basic.pause(30); 
+                }
+                
+                // 2. HARDWARE AS SOURCE OF TRUTH: Dump the real-time physical state to snap the UI into position!
+                for(let i=0; i<initCommands.length; i++) {
+                    let parts = initCommands[i].split(":");
+                    if (parts.length >= 2) {
+                        let id = parts[1].split(",")[0];
+                        let val = 0;
+                        let valid = false;
+                        
+                        if (id.charAt(0) == 'M') { val = motorVals[parseInt(id.charAt(1)) - 1]; valid = true; }
+                        else if (id.charAt(0) == 'S') { val = servoVals[parseInt(id.charAt(1)) - 1]; valid = true; }
+                        else if (id.charAt(0) == 'A') { val = analogVals[parseInt(id.charAt(1)) - 1]; valid = true; }
+                        else if (id.charAt(0) == 'D') { val = digitalVals[parseInt(id.charAt(1)) - 1]; valid = true; }
+                        
+                        if (valid) {
+                            bluetooth.uartWriteString(id + ":" + val + "\n");
+                            basic.pause(30);
+                        }
+                    }
                 }
             } else {
                 parseCommand(cmd);
