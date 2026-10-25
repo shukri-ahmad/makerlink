@@ -102,31 +102,43 @@ namespace makerlink {
     }
 
     /**
-     * Initialize a DC Motor Card
+     * Creates a custom motor card on the dashboard.
+     * @param id The motor port (e.g., M1, M2, M3, M4)
+     * @param ccwSpeed The default speed for the CCW button (0-255)
+     * @param cwSpeed The default speed for the CW button (0-255)
      */
-    //% block="⚙️ Init Motor Card $motor | Start $startVal | CW Limit $cw | CCW Limit $ccw"
-    //% startVal.defl=0 cw.defl=255 ccw.defl=-255
-    //% group="Setup (On Start)"
+    //% block="⚙️ MakerLink: Init Motor Card id: $id CCW speed: $ccwSpeed CW speed: $cwSpeed"
+    //% ccwSpeed.min=0 ccwSpeed.max=255 ccwSpeed.defl=255
+    //% cwSpeed.min=0 cwSpeed.max=255 cwSpeed.defl=255
+    //% group="Initialization Commands"
     //% weight=90
-    export function initMotor(motor: MotorID, startVal: number, cw: number, ccw: number): void {
-        motorVals[motor] = startVal;
-        let cmd = "INIT:" + getMotorStr(motor) + ",MOTOR," + startVal + "," + cw + "," + ccw;
-        saveInitCmd(cmd);
-        bluetooth.uartWriteString(cmd + "\n");
+    export function initMotorCard(id: string, ccwSpeed: number, cwSpeed: number): void {
+        // 1. Force both numbers to be positive using Math.abs
+        // 2. Clamp them to 255 just in case
+        let safeCCW = Math.min(255, Math.abs(ccwSpeed));
+        let safeCW = Math.min(255, Math.abs(cwSpeed));
+        
+        // Sends pure numbers without the "OUT" mode string (e.g., INIT:M1,255,255)
+        bluetooth.uartWriteString("INIT:" + id + "," + safeCCW + "," + safeCW + "\n");
     }
 
     /**
-     * Initialize a Servo Card
+     * Creates positional control buttons and sliders for a servo.
+     * @param id The servo port (e.g., S1, S2)
+     * @param pos1 The default angle for Pos 1 (0-180)
+     * @param pos2 The default angle for Pos 2 (0-180)
      */
-    //% block="🦾 Init Servo Card $servo | Start Angle $start | Pos 1 $pos1 | Pos 2 $pos2"
-    //% start.defl=90 pos1.defl=0 pos2.defl=180
-    //% group="Setup (On Start)"
+    //% block="🦾 MakerLink: Init Servo Card id: $id Pos 1: $pos1 Pos 2: $pos2"
+    //% pos1.min=0 pos1.max=180 pos1.defl=0
+    //% pos2.min=0 pos2.max=180 pos2.defl=180
+    //% group="Initialization Commands"
     //% weight=89
-    export function initServo(servo: ServoID, start: number, pos1: number, pos2: number): void {
-        servoVals[servo] = start;
-        let cmd = "INIT:" + getServoStr(servo) + ",SERVO," + start + "," + pos1 + "," + pos2;
-        saveInitCmd(cmd);
-        bluetooth.uartWriteString(cmd + "\n");
+    export function initServoCard(id: string, pos1: number, pos2: number): void {
+        let safePos1 = Math.min(180, Math.max(0, Math.abs(pos1)));
+        let safePos2 = Math.min(180, Math.max(0, Math.abs(pos2)));
+        
+        // Sends: INIT:S1,90,0,180 (Starts at 90 degrees, Pos1 is 0, Pos2 is 180)
+        bluetooth.uartWriteString("INIT:" + id + ",90," + safePos1 + "," + safePos2 + "\n");
     }
 
     /**
