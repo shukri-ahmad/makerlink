@@ -54,36 +54,39 @@ namespace MakerLink {
         });
     }
 
-    /**
+ /**
      * Creates a custom Motor Control card on the dashboard.
      */
-    //% block="⚙️ Init Motor Card $port CCW speed: $ccwSpeed CW speed: $cwSpeed"
+    //% block="⚙️ Init Motor Card $port start speed:$startSpeed CCW speed: $ccwSpeed CW speed:$cwSpeed"
+    //% startSpeed.min=-255 startSpeed.max=255 startSpeed.defl=0
     //% ccwSpeed.min=0 ccwSpeed.max=255 ccwSpeed.defl=255
     //% cwSpeed.min=0 cwSpeed.max=255 cwSpeed.defl=255
     //% group="Setup"
     //% weight=90
-    export function initMotorCard(port: MotorPort, ccwSpeed: number, cwSpeed: number): void {
+    export function initMotorCard(port: MotorPort, startSpeed: number, ccwSpeed: number, cwSpeed: number): void {
         let id = "M" + (port + 1);
+        let safeStart = Math.min(255, Math.max(-255, startSpeed));
         let safeCCW = Math.min(255, Math.max(0, Math.abs(ccwSpeed)));
         let safeCW = Math.min(255, Math.max(0, Math.abs(cwSpeed)));
-        bluetooth.uartWriteString("INIT:" + id + "," + safeCCW + "," + safeCW + "\n");
+        bluetooth.uartWriteString("INIT:" + id + "," + safeStart + "," + safeCCW + "," + safeCW + "\n");
     }
 
     /**
      * Creates a Servo Control card on the dashboard.
      */
-    //% block="🦾 Init Servo Card $port Pos 1: $pos1 Pos 2: $pos2"
+    //% block="🦾 Init Servo Card $port start angle:$startAngle Pos 1: $pos1 Pos 2:$pos2"
+    //% startAngle.min=0 startAngle.max=180 startAngle.defl=90
     //% pos1.min=0 pos1.max=180 pos1.defl=0
     //% pos2.min=0 pos2.max=180 pos2.defl=180
     //% group="Setup"
     //% weight=89
-    export function initServoCard(port: ServoPort, pos1: number, pos2: number): void {
+    export function initServoCard(port: ServoPort, startAngle: number, pos1: number, pos2: number): void {
         let id = "S" + (port + 1);
+        let safeStart = Math.min(180, Math.max(0, Math.abs(startAngle)));
         let safePos1 = Math.min(180, Math.max(0, Math.abs(pos1)));
         let safePos2 = Math.min(180, Math.max(0, Math.abs(pos2)));
-        bluetooth.uartWriteString("INIT:" + id + ",90," + safePos1 + "," + safePos2 + "\n");
+        bluetooth.uartWriteString("INIT:" + id + "," + safeStart + "," + safePos1 + "," + safePos2 + "\n");
     }
-
     /**
      * Creates an Analog Stream card (Chart or Slider).
      */
