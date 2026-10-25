@@ -38,7 +38,6 @@ namespace MakerLink {
                 let valStr = data.substr(sepIdx + 1, data.length - sepIdx - 1);
                 
                 if (id !== "SYNC") {
-                    // Clean string to prevent \r carriage returns from breaking negative parsing
                     let cleanStr = "";
                     for(let i = 0; i < valStr.length; i++) {
                         let c = valStr.charAt(i);
@@ -74,8 +73,12 @@ namespace MakerLink {
         let safeStart = Math.min(255, Math.max(-255, startSpeed));
         let safeCCW = Math.min(255, Math.max(0, Math.abs(ccwSpeed)));
         let safeCW = Math.min(255, Math.max(0, Math.abs(cwSpeed)));
-        bluetooth.uartWriteString("INIT:" + id + "," + safeStart + "," + safeCCW + "," + safeCW + "\n");
-        basic.pause(50); // PREVENTS BLUETOOTH BUFFER OVERFLOW
+        
+        // Split into two chunks to avoid the 20-byte Bluetooth MTU limit!
+        bluetooth.uartWriteString("INIT:" + id + "," + safeStart + ",");
+        basic.pause(20);
+        bluetooth.uartWriteString(safeCCW + "," + safeCW + "\n");
+        basic.pause(50);
     }
 
     /**
@@ -92,7 +95,11 @@ namespace MakerLink {
         let safeStart = Math.min(180, Math.max(0, Math.abs(startAngle)));
         let safePos1 = Math.min(180, Math.max(0, Math.abs(pos1)));
         let safePos2 = Math.min(180, Math.max(0, Math.abs(pos2)));
-        bluetooth.uartWriteString("INIT:" + id + "," + safeStart + "," + safePos1 + "," + safePos2 + "\n");
+        
+        // Split to avoid 20-byte limit
+        bluetooth.uartWriteString("INIT:" + id + "," + safeStart + ",");
+        basic.pause(20);
+        bluetooth.uartWriteString(safePos1 + "," + safePos2 + "\n");
         basic.pause(50);
     }
 
@@ -132,7 +139,11 @@ namespace MakerLink {
     //% weight=86
     export function initTextStream(port: TextPort, startVal: string): void {
         let id = "T" + (port + 1);
-        bluetooth.uartWriteString("INIT:" + id + "," + startVal + "\n");
+        
+        // Text can easily exceed 20 bytes, chunk it safely
+        bluetooth.uartWriteString("INIT:" + id + ",");
+        basic.pause(20);
+        bluetooth.uartWriteString(startVal + "\n");
         basic.pause(50);
     }
 
