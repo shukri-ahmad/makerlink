@@ -28,7 +28,7 @@ namespace makerlink {
     let analogVals = [0, 0, 0, 0, 0, 0, 0, 0];
     let digitalVals = [0, 0, 0, 0, 0, 0, 0, 0];
     let textVals = ["", "", "", ""];
-    let ledVal = "0000000000000000000000000";
+    let ledVal = 0; // Now stores the 25-bit integer!
 
     // ==============================================
     // UTILITIES
@@ -68,7 +68,6 @@ namespace makerlink {
     }
 
     function parseCommand(cmd: string) {
-        // Safer split to allow text strings with colons inside them!
         let splitIdx = cmd.indexOf(':');
         if (splitIdx === -1) return;
         
@@ -96,15 +95,28 @@ namespace makerlink {
             if (idx >= 0 && idx <= 7) digitalVals[idx] = val;
         } else if (id.charAt(0) == 'T') {
             let idx = parseInt(id.charAt(1)) - 1;
-            if (idx >= 0 && idx <= 3) textVals[idx] = valStr;
-        } else if (id.charAt(0) == 'L') {
-            ledVal = valStr;
-            for(let i = 0; i < 25 && i < valStr.length; i++) {
-                let x = i % 5;
-                let y = Math.floor(i / 5);
-                if (valStr.charAt(i) == '1') led.plot(x, y);
-                else led.unplot(x, y);
+            if (idx >= 0 && idx <= 3) {
+                textVals[idx] = valStr;
+                // Automatically scroll the text instantly when received!
+                control.inBackground(function() {
+                    basic.showString(valStr);
+                });
             }
+        } else if (id.charAt(0) == 'L') {
+            let num = parseInt(valStr);
+            ledVal = num;
+            // Decode the integer back into a 5x5 physical LED grid!
+            control.inBackground(function() {
+                for(let i = 0; i < 25; i++) {
+                    let x = i % 5;
+                    let y = Math.floor(i / 5);
+                    if ((num & (1 << i)) !== 0) {
+                        led.plot(x, y);
+                    } else {
+                        led.unplot(x, y);
+                    }
+                }
+            });
         }
     }
 
@@ -165,7 +177,7 @@ namespace makerlink {
                         else if (id.charAt(0) == 'A') { valStrOut = analogVals[parseInt(id.charAt(1)) - 1].toString(); valid = true; }
                         else if (id.charAt(0) == 'D') { valStrOut = digitalVals[parseInt(id.charAt(1)) - 1].toString(); valid = true; }
                         else if (id.charAt(0) == 'T') { valStrOut = textVals[parseInt(id.charAt(1)) - 1]; valid = true; }
-                        else if (id.charAt(0) == 'L') { valStrOut = ledVal; valid = true; }
+                        else if (id.charAt(0) == 'L') { valStrOut = ledVal.toString(); valid = true; }
                         
                         if (valid) {
                             bluetooth.uartWriteString(id + ":" + valStrOut + "\n");
@@ -257,7 +269,8 @@ namespace makerlink {
     //% group="Setup (On Start)"
     //% weight=86
     export function initText(stream: MLTextStream, mode: MLPinMode, val: string): void {
-        let mStr = (mode == MLPinMode.IN) ? "IN" : "OUT"; // Push maps to OUT for text
+        textVals[stream] = val; // FIX: Ensure text survives the SYNC handshake!
+        let mStr = (mode == MLPinMode.IN) ? "IN" : "OUT"; 
         let cmd = "INIT:" + getTextStr(stream) + "," + mStr + "," + val;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
@@ -270,9 +283,11 @@ namespace makerlink {
     //% group="Setup (On Start)"
     //% weight=85
     export function initLEDMatrix(): void {
-        let cmd = "INIT:L1,LED,0000000000000000000000000";
+        ledVal = 0; 
+        let cmd = "INIT:L1,LED,0";
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
+        basic.clearScreen();
     }
 
     // ==============================================
