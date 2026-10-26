@@ -431,7 +431,7 @@ namespace makerlink {
     /**
      * Send Text data to update the Web App Text Display
      */
-    //% block="📤 Update Dashboard Text Stream $stream to$val"
+    //% block="📤 Update Dashboard Text Stream $stream to $val"
     //% group="Send (Update Dashboard)"
     //% weight=58
     export function sendTextStream(stream: MLTextStream, val: string): void {
@@ -441,7 +441,7 @@ namespace makerlink {
     /**
      * Override the Web App Motor slider position
      */
-    //% block="📤 Update Dashboard Motor $motor to$val"
+    //% block="📤 Update Dashboard Motor $motor to $val"
     //% group="Send (Update Dashboard)"
     //% weight=57
     export function sendMotor(motor: MotorID, val: number): void {
@@ -451,7 +451,7 @@ namespace makerlink {
     /**
      * Override the Web App Servo angle text
      */
-    //% block="📤 Update Dashboard Servo $servo to$val"
+    //% block="📤 Update Dashboard Servo $servo to $val"
     //% group="Send (Update Dashboard)"
     //% weight=56
     export function sendServo(servo: ServoID, val: number): void {
