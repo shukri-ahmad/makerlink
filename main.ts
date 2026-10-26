@@ -71,9 +71,6 @@ namespace makerlink {
         if (parts.length < 2) return;
         let id = parts[0];
         let val = parseInt(parts[1]);
-        
-        // Extract 3rd parameter for Delay from UI (defaults to 0 for instant slider drags)
-        let delay = parts.length >= 3 ? parseInt(parts[2]) : 0;
 
         if (id.charAt(0) == 'M') {
             let idx = parseInt(id.charAt(1)) - 1;
@@ -81,8 +78,13 @@ namespace makerlink {
         } else if (id.charAt(0) == 'S') {
             let idx = parseInt(id.charAt(1)) - 1;
             if (idx >= 0 && idx <= 7) {
-                servoVals[idx] = val; // Set Target
-                servoDelay[idx] = Math.max(0, delay); // Apply Bluetooth Speed
+                servoVals[idx] = val; // Set new target angle from dashboard
+                
+                // If a delay is explicitly passed by UI, use it. 
+                // Otherwise, preserve whatever smooth delay MakeCode currently has set!
+                if (parts.length >= 3) {
+                    servoDelay[idx] = Math.max(0, parseInt(parts[2]));
+                }
             }
         } else if (id.charAt(0) == 'A') {
             let idx = parseInt(id.charAt(1)) - 1;
@@ -167,7 +169,7 @@ namespace makerlink {
     /**
      * Initialize a DC Motor Card
      */
-    //% block="⚙️ Init Motor Card $motor | Start $startVal | CW Limit $cw | CCW Limit $ccw"
+    //% block="⚙️ Init Motor Card $motor \vert{} Start$startVal | CW Limit $cw \vert{} CCW Limit$ccw"
     //% startVal.defl=0 cw.defl=255 ccw.defl=255
     //% group="Setup (On Start)"
     //% weight=90
@@ -181,7 +183,7 @@ namespace makerlink {
     /**
      * Initialize a Servo Card
      */
-    //% block="🦾 Init Servo Card $servo | Start Angle $start | Pos 1 $pos1 | Pos 2 $pos2"
+    //% block="🦾 Init Servo Card $servo \vert{} Start Angle$start | Pos 1 $pos1 | Pos 2 $pos2"
     //% start.defl=90 pos1.defl=0 pos2.defl=180
     //% group="Setup (On Start)"
     //% weight=89
@@ -197,7 +199,7 @@ namespace makerlink {
     /**
      * Initialize an Analog Data Stream
      */
-    //% block="📊 Init Analog Stream $stream | Mode $mode | Initial Val $val"
+    //% block="📊 Init Analog Stream $stream | Mode $mode \vert{} Initial Val$val"
     //% val.defl=0
     //% group="Setup (On Start)"
     //% weight=88
@@ -212,7 +214,7 @@ namespace makerlink {
     /**
      * Initialize a Digital Data Stream
      */
-    //% block="🚥 Init Digital Stream $stream | Mode $mode | Initial Val $val"
+    //% block="🚥 Init Digital Stream $stream | Mode $mode \vert{} Initial Val$val"
     //% val.defl=0
     //% group="Setup (On Start)"
     //% weight=87
@@ -227,7 +229,7 @@ namespace makerlink {
     /**
      * Initialize a Text Data Stream
      */
-    //% block="📝 Init Text Stream $stream | Initial Text $val"
+    //% block="📝 Init Text Stream $stream \vert{} Initial Text$val"
     //% group="Setup (On Start)"
     //% weight=86
     export function initText(stream: MLTextStream, val: string): void {
@@ -243,7 +245,7 @@ namespace makerlink {
     /**
      * Runs the motor (-255 to 255)
      */
-    //% block="MakerLink run motor $motor at speed $speed"
+    //% block="MakerLink run motor $motor at speed$speed"
     //% group="Write (Actions)"
     //% speed.min=-255 speed.max=255
     //% weight=80
@@ -263,29 +265,23 @@ namespace makerlink {
 
     /**
      * Sets the servo angle smoothly in hardware. 
-     * Uses -1 fallback so it doesn't overwrite UI Bluetooth delays!
      */
-    //% block="MakerLink set servo $servo to $angle degrees || with delay $delay ms"
+    //% block="MakerLink set servo $servo to $angle degrees \vert{}\vert{} with delay$delay ms"
     //% group="Write (Actions)"
     //% expandableArgumentMode="toggle"
     //% angle.min=0 angle.max=180
-    //% delay.defl=-1
+    //% delay.defl=0
     //% weight=79
-    export function setServo(servo: ServoID, angle: number, delay: number = -1): void {
+    export function setServo(servo: ServoID, angle: number, delay: number = 0): void {
         let val = Math.max(0, Math.min(180, angle));
-        servoVals[servo] = val; // Set Target
-        
-        // Only overwrite the delay if the user explicitly provided a positive number
-        // Otherwise, it preserves whatever smooth delay the Web UI just sent!
-        if (delay >= 0) {
-            servoDelay[servo] = delay; 
-        }
+        servoVals[servo] = val; 
+        servoDelay[servo] = Math.max(0, delay); 
     }
 
     /**
      * Physical Analog write mapping (0 to 1023)
      */
-    //% block="MakerLink write analog stream $stream to $val"
+    //% block="MakerLink write analog stream $stream to$val"
     //% group="Write (Actions)"
     //% val.min=0 val.max=1023
     //% weight=78
@@ -302,7 +298,7 @@ namespace makerlink {
     /**
      * Physical Digital write mapping (0 or 1)
      */
-    //% block="MakerLink write digital stream $stream to $val"
+    //% block="MakerLink write digital stream $stream to$val"
     //% group="Write (Actions)"
     //% val.min=0 val.max=1
     //% weight=77
