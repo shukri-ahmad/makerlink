@@ -7,7 +7,7 @@ namespace makerlink {
     // ==============================================
     export enum MotorID { M1, M2, M3, M4 }
     export enum ServoID { S1, S2, S3, S4, S5, S6, S7, S8 }
-    export enum MLPinMode { IN, OUT }
+    export enum MLPinMode { IN, OUT, PUSH } // ADDED 3rd MODE!
     export enum MLAnalogStream { A1, A2, A3, A4, A5, A6, A7, A8 }
     export enum MLDigitalStream { D1, D2, D3, D4, D5, D6, D7, D8 }
     export enum MLTextStream { T1, T2, T3, T4 }
@@ -20,11 +20,10 @@ namespace makerlink {
 
     let motorVals = [0, 0, 0, 0];
     
-    // Hardware Servo Timing Arrays
-    let servoVals = [90, 90, 90, 90, 90, 90, 90, 90]; // Target Angle
-    let servoCurrent = [90, 90, 90, 90, 90, 90, 90, 90]; // Current Physical Angle
-    let servoDelay = [0, 0, 0, 0, 0, 0, 0, 0]; // Speed/Delay ms
-    let servoLast = [0, 0, 0, 0, 0, 0, 0, 0]; // Timestamps
+    let servoVals = [90, 90, 90, 90, 90, 90, 90, 90]; 
+    let servoCurrent = [90, 90, 90, 90, 90, 90, 90, 90]; 
+    let servoDelay = [0, 0, 0, 0, 0, 0, 0, 0]; 
+    let servoLast = [0, 0, 0, 0, 0, 0, 0, 0]; 
     
     let analogVals = [0, 0, 0, 0, 0, 0, 0, 0];
     let digitalVals = [0, 0, 0, 0, 0, 0, 0, 0];
@@ -170,7 +169,7 @@ namespace makerlink {
     //% group="Setup (On Start)"
     //% weight=90
     export function initMotor(motor: MotorID, startVal: number, cw: number, ccw: number): void {
-        runMotor(motor, startVal); // FIX: Physically applies speed on boot
+        runMotor(motor, startVal); 
         let cmd = "INIT:" + getMotorStr(motor) + ",MOTOR," + startVal + "," + cw + "," + ccw;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
@@ -188,7 +187,7 @@ namespace makerlink {
         servoCurrent[servo] = start;
         servoDelay[servo] = 0;
         
-        applyServoPhysical(servo, start); // FIX: Physically jumps to start angle on boot!
+        applyServoPhysical(servo, start); 
 
         let cmd = "INIT:" + getServoStr(servo) + ",SERVO," + start + "," + pos1 + "," + pos2;
         saveInitCmd(cmd);
@@ -203,10 +202,10 @@ namespace makerlink {
     //% group="Setup (On Start)"
     //% weight=88
     export function initAnalog(stream: MLAnalogStream, mode: MLPinMode, val: number): void {
-        if (mode == MLPinMode.OUT) { writeAnalog(stream, val); } // FIX: Physically write if OUT
+        if (mode == MLPinMode.OUT || mode == MLPinMode.PUSH) { writeAnalog(stream, val); } 
         else { analogVals[stream] = val; }
         
-        let mStr = mode == MLPinMode.IN ? "IN" : "OUT";
+        let mStr = (mode == MLPinMode.IN) ? "IN" : "OUT";
         let cmd = "INIT:" + getAnalogStr(stream) + "," + mStr + "," + val;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
@@ -220,10 +219,13 @@ namespace makerlink {
     //% group="Setup (On Start)"
     //% weight=87
     export function initDigital(stream: MLDigitalStream, mode: MLPinMode, val: number): void {
-        if (mode == MLPinMode.OUT) { writeDigital(stream, val); } // FIX: Physically write if OUT
+        if (mode == MLPinMode.OUT || mode == MLPinMode.PUSH) { writeDigital(stream, val); } 
         else { digitalVals[stream] = val; }
 
-        let mStr = mode == MLPinMode.IN ? "IN" : "OUT";
+        let mStr = "IN";
+        if (mode == MLPinMode.OUT) mStr = "OUT";
+        if (mode == MLPinMode.PUSH) mStr = "PUSH"; // Parse the new Push Mode!
+
         let cmd = "INIT:" + getDigitalStr(stream) + "," + mStr + "," + val;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
