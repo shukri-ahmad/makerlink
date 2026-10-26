@@ -20,7 +20,7 @@ namespace makerlink {
 
     let motorVals = [0, 0, 0, 0];
     
-    // NEW: Advanced Hardware Servo Timing Arrays
+    // Hardware Servo Timing Arrays
     let servoVals = [90, 90, 90, 90, 90, 90, 90, 90]; // Target Angle
     let servoCurrent = [90, 90, 90, 90, 90, 90, 90, 90]; // Current Physical Angle
     let servoDelay = [0, 0, 0, 0, 0, 0, 0, 0]; // Speed/Delay ms
@@ -72,7 +72,7 @@ namespace makerlink {
         let id = parts[0];
         let val = parseInt(parts[1]);
         
-        // NEW: Check if the UI sent a 3rd parameter for Servo Delay!
+        // Extract 3rd parameter for Delay from UI (defaults to 0 for instant slider drags)
         let delay = parts.length >= 3 ? parseInt(parts[2]) : 0;
 
         if (id.charAt(0) == 'M') {
@@ -82,7 +82,7 @@ namespace makerlink {
             let idx = parseInt(id.charAt(1)) - 1;
             if (idx >= 0 && idx <= 7) {
                 servoVals[idx] = val; // Set Target
-                servoDelay[idx] = Math.max(0, delay); // Set Speed
+                servoDelay[idx] = Math.max(0, delay); // Apply Bluetooth Speed
             }
         } else if (id.charAt(0) == 'A') {
             let idx = parseInt(id.charAt(1)) - 1;
@@ -107,7 +107,7 @@ namespace makerlink {
         if (isInitialized) return;
         bluetooth.startUartService();
         
-        // NEW: Hardware-level Background Thread for perfectly smooth servos!
+        // Hardware-level Background Thread for perfectly smooth servos!
         control.inBackground(function() {
             while(true) {
                 let now = control.millis();
@@ -262,18 +262,24 @@ namespace makerlink {
     }
 
     /**
-     * Sets the servo angle smoothly in hardware
+     * Sets the servo angle smoothly in hardware. 
+     * Uses -1 fallback so it doesn't overwrite UI Bluetooth delays!
      */
     //% block="MakerLink set servo $servo to $angle degrees || with delay $delay ms"
     //% group="Write (Actions)"
     //% expandableArgumentMode="toggle"
     //% angle.min=0 angle.max=180
-    //% delay.defl=0
+    //% delay.defl=-1
     //% weight=79
-    export function setServo(servo: ServoID, angle: number, delay: number = 0): void {
+    export function setServo(servo: ServoID, angle: number, delay: number = -1): void {
         let val = Math.max(0, Math.min(180, angle));
         servoVals[servo] = val; // Set Target
-        servoDelay[servo] = Math.max(0, delay); // Hardware Engine takes over!
+        
+        // Only overwrite the delay if the user explicitly provided a positive number
+        // Otherwise, it preserves whatever smooth delay the Web UI just sent!
+        if (delay >= 0) {
+            servoDelay[servo] = delay; 
+        }
     }
 
     /**
