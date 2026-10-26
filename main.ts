@@ -78,10 +78,7 @@ namespace makerlink {
         } else if (id.charAt(0) == 'S') {
             let idx = parseInt(id.charAt(1)) - 1;
             if (idx >= 0 && idx <= 7) {
-                servoVals[idx] = val; // Set new target angle from dashboard
-                
-                // If a delay is explicitly passed by UI, use it. 
-                // Otherwise, preserve whatever smooth delay MakeCode currently has set!
+                servoVals[idx] = val; 
                 if (parts.length >= 3) {
                     servoDelay[idx] = Math.max(0, parseInt(parts[2]));
                 }
@@ -109,14 +106,13 @@ namespace makerlink {
         if (isInitialized) return;
         bluetooth.startUartService();
         
-        // Hardware-level Background Thread for perfectly smooth servos!
         control.inBackground(function() {
             while(true) {
                 let now = control.millis();
                 for (let i = 0; i < 8; i++) {
                     if (servoCurrent[i] !== servoVals[i]) {
                         if (servoDelay[i] <= 0) {
-                            servoCurrent[i] = servoVals[i]; // Instant Jump
+                            servoCurrent[i] = servoVals[i]; 
                             applyServoPhysical(i, servoCurrent[i]);
                         } else {
                             if (now - servoLast[i] >= servoDelay[i]) {
@@ -128,7 +124,7 @@ namespace makerlink {
                         }
                     }
                 }
-                basic.pause(5); // Prevents the loop from crashing the micro:bit CPU
+                basic.pause(5); 
             }
         });
         
@@ -174,7 +170,7 @@ namespace makerlink {
     //% group="Setup (On Start)"
     //% weight=90
     export function initMotor(motor: MotorID, startVal: number, cw: number, ccw: number): void {
-        motorVals[motor] = startVal;
+        runMotor(motor, startVal); // FIX: Physically applies speed on boot
         let cmd = "INIT:" + getMotorStr(motor) + ",MOTOR," + startVal + "," + cw + "," + ccw;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
@@ -189,8 +185,11 @@ namespace makerlink {
     //% weight=89
     export function initServo(servo: ServoID, start: number, pos1: number, pos2: number): void {
         servoVals[servo] = start;
-        servoCurrent[servo] = start; // Lock initial physics to start angle
+        servoCurrent[servo] = start;
         servoDelay[servo] = 0;
+        
+        applyServoPhysical(servo, start); // FIX: Physically jumps to start angle on boot!
+
         let cmd = "INIT:" + getServoStr(servo) + ",SERVO," + start + "," + pos1 + "," + pos2;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
@@ -204,7 +203,9 @@ namespace makerlink {
     //% group="Setup (On Start)"
     //% weight=88
     export function initAnalog(stream: MLAnalogStream, mode: MLPinMode, val: number): void {
-        analogVals[stream] = val;
+        if (mode == MLPinMode.OUT) { writeAnalog(stream, val); } // FIX: Physically write if OUT
+        else { analogVals[stream] = val; }
+        
         let mStr = mode == MLPinMode.IN ? "IN" : "OUT";
         let cmd = "INIT:" + getAnalogStr(stream) + "," + mStr + "," + val;
         saveInitCmd(cmd);
@@ -219,7 +220,9 @@ namespace makerlink {
     //% group="Setup (On Start)"
     //% weight=87
     export function initDigital(stream: MLDigitalStream, mode: MLPinMode, val: number): void {
-        digitalVals[stream] = val;
+        if (mode == MLPinMode.OUT) { writeDigital(stream, val); } // FIX: Physically write if OUT
+        else { digitalVals[stream] = val; }
+
         let mStr = mode == MLPinMode.IN ? "IN" : "OUT";
         let cmd = "INIT:" + getDigitalStr(stream) + "," + mStr + "," + val;
         saveInitCmd(cmd);
