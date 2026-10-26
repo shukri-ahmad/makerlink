@@ -169,7 +169,7 @@ namespace makerlink {
     /**
      * Initialize a DC Motor Card
      */
-    //% block="⚙️ Init Motor Card $motor \vert{} Start$startVal | CW Limit $cw \vert{} CCW Limit$ccw"
+    //% block="⚙️ Init Motor Card $motor | Start $startVal | CW Limit $cw | CCW Limit $ccw"
     //% startVal.defl=0 cw.defl=255 ccw.defl=255
     //% group="Setup (On Start)"
     //% weight=90
@@ -183,7 +183,7 @@ namespace makerlink {
     /**
      * Initialize a Servo Card
      */
-    //% block="🦾 Init Servo Card $servo \vert{} Start Angle$start | Pos 1 $pos1 | Pos 2 $pos2"
+    //% block="🦾 Init Servo Card $servo | Start Angle $start | Pos 1 $pos1 | Pos 2 $pos2"
     //% start.defl=90 pos1.defl=0 pos2.defl=180
     //% group="Setup (On Start)"
     //% weight=89
@@ -199,7 +199,7 @@ namespace makerlink {
     /**
      * Initialize an Analog Data Stream
      */
-    //% block="📊 Init Analog Stream $stream | Mode $mode \vert{} Initial Val$val"
+    //% block="📊 Init Analog Stream $stream | Mode $mode | Initial Val $val"
     //% val.defl=0
     //% group="Setup (On Start)"
     //% weight=88
@@ -214,7 +214,7 @@ namespace makerlink {
     /**
      * Initialize a Digital Data Stream
      */
-    //% block="🚥 Init Digital Stream $stream | Mode $mode \vert{} Initial Val$val"
+    //% block="🚥 Init Digital Stream $stream | Mode $mode | Initial Val $val"
     //% val.defl=0
     //% group="Setup (On Start)"
     //% weight=87
@@ -229,7 +229,7 @@ namespace makerlink {
     /**
      * Initialize a Text Data Stream
      */
-    //% block="📝 Init Text Stream $stream \vert{} Initial Text$val"
+    //% block="📝 Init Text Stream $stream | Initial Text $val"
     //% group="Setup (On Start)"
     //% weight=86
     export function initText(stream: MLTextStream, val: string): void {
@@ -245,7 +245,7 @@ namespace makerlink {
     /**
      * Runs the motor (-255 to 255)
      */
-    //% block="MakerLink run motor $motor at speed$speed"
+    //% block="MakerLink run motor $motor at speed $speed"
     //% group="Write (Actions)"
     //% speed.min=-255 speed.max=255
     //% weight=80
@@ -266,7 +266,7 @@ namespace makerlink {
     /**
      * Sets the servo angle smoothly in hardware. 
      */
-    //% block="MakerLink set servo $servo to $angle degrees \vert{}\vert{} with delay$delay ms"
+    //% block="MakerLink set servo $servo to $angle degrees || with delay $delay ms"
     //% group="Write (Actions)"
     //% expandableArgumentMode="toggle"
     //% angle.min=0 angle.max=180
@@ -281,7 +281,7 @@ namespace makerlink {
     /**
      * Physical Analog write mapping (0 to 1023)
      */
-    //% block="MakerLink write analog stream $stream to$val"
+    //% block="MakerLink write analog stream $stream to $val"
     //% group="Write (Actions)"
     //% val.min=0 val.max=1023
     //% weight=78
@@ -298,7 +298,7 @@ namespace makerlink {
     /**
      * Physical Digital write mapping (0 or 1)
      */
-    //% block="MakerLink write digital stream $stream to$val"
+    //% block="MakerLink write digital stream $stream to $val"
     //% group="Write (Actions)"
     //% val.min=0 val.max=1
     //% weight=77
