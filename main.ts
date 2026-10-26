@@ -15,11 +15,17 @@ namespace makerlink {
     // ==============================================
     // INTERNAL STATE & MEMORY
     // ==============================================
-    let initCommands: string[] = []; // Stores dashboard layout for SYNC
+    let initCommands: string[] = []; 
     let isInitialized = false;
 
     let motorVals = [0, 0, 0, 0];
-    let servoVals = [90, 90, 90, 90, 90, 90, 90, 90];
+    
+    // NEW: Advanced Hardware Servo Timing Arrays
+    let servoVals = [90, 90, 90, 90, 90, 90, 90, 90]; // Target Angle
+    let servoCurrent = [90, 90, 90, 90, 90, 90, 90, 90]; // Current Physical Angle
+    let servoDelay = [0, 0, 0, 0, 0, 0, 0, 0]; // Speed/Delay ms
+    let servoLast = [0, 0, 0, 0, 0, 0, 0, 0]; // Timestamps
+    
     let analogVals = [0, 0, 0, 0, 0, 0, 0, 0];
     let digitalVals = [0, 0, 0, 0, 0, 0, 0, 0];
 
@@ -31,6 +37,18 @@ namespace makerlink {
     function getAnalogStr(id: MLAnalogStream): string { return "A" + (id + 1); }
     function getDigitalStr(id: MLDigitalStream): string { return "D" + (id + 1); }
     function getTextStr(id: MLTextStream): string { return "T" + (id + 1); }
+
+    function applyServoPhysical(idx: number, val: number) {
+        let mbServo = MotionBitServoChannel.S1;
+        if (idx == 1) mbServo = MotionBitServoChannel.S2;
+        if (idx == 2) mbServo = MotionBitServoChannel.S3;
+        if (idx == 3) mbServo = MotionBitServoChannel.S4;
+        if (idx == 4) mbServo = MotionBitServoChannel.S5;
+        if (idx == 5) mbServo = MotionBitServoChannel.S6;
+        if (idx == 6) mbServo = MotionBitServoChannel.S7;
+        if (idx == 7) mbServo = MotionBitServoChannel.S8;
+        motionbit.setServoPosition(mbServo, val);
+    }
 
     function saveInitCmd(cmd: string) {
         let parts = cmd.split(":");
@@ -49,18 +67,23 @@ namespace makerlink {
     }
 
     function parseCommand(cmd: string) {
-        let splitIdx = cmd.indexOf(':');
-        if (splitIdx === -1) return;
-        let id = cmd.substr(0, splitIdx);
-        let valStr = cmd.substr(splitIdx + 1);
-        let val = parseInt(valStr);
+        let parts = cmd.split(':');
+        if (parts.length < 2) return;
+        let id = parts[0];
+        let val = parseInt(parts[1]);
+        
+        // NEW: Check if the UI sent a 3rd parameter for Servo Delay!
+        let delay = parts.length >= 3 ? parseInt(parts[2]) : 0;
 
         if (id.charAt(0) == 'M') {
             let idx = parseInt(id.charAt(1)) - 1;
             if (idx >= 0 && idx <= 3) motorVals[idx] = val;
         } else if (id.charAt(0) == 'S') {
             let idx = parseInt(id.charAt(1)) - 1;
-            if (idx >= 0 && idx <= 7) servoVals[idx] = val;
+            if (idx >= 0 && idx <= 7) {
+                servoVals[idx] = val; // Set Target
+                servoDelay[idx] = Math.max(0, delay); // Set Speed
+            }
         } else if (id.charAt(0) == 'A') {
             let idx = parseInt(id.charAt(1)) - 1;
             if (idx >= 0 && idx <= 7) analogVals[idx] = val;
@@ -84,17 +107,38 @@ namespace makerlink {
         if (isInitialized) return;
         bluetooth.startUartService();
         
+        // NEW: Hardware-level Background Thread for perfectly smooth servos!
+        control.inBackground(function() {
+            while(true) {
+                let now = control.millis();
+                for (let i = 0; i < 8; i++) {
+                    if (servoCurrent[i] !== servoVals[i]) {
+                        if (servoDelay[i] <= 0) {
+                            servoCurrent[i] = servoVals[i]; // Instant Jump
+                            applyServoPhysical(i, servoCurrent[i]);
+                        } else {
+                            if (now - servoLast[i] >= servoDelay[i]) {
+                                servoLast[i] = now;
+                                if (servoCurrent[i] < servoVals[i]) servoCurrent[i]++;
+                                else servoCurrent[i]--;
+                                applyServoPhysical(i, servoCurrent[i]);
+                            }
+                        }
+                    }
+                }
+                basic.pause(5); // Prevents the loop from crashing the micro:bit CPU
+            }
+        });
+        
         bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () {
             let cmd = bluetooth.uartReadUntil(serial.delimiters(Delimiters.NewLine)).trim();
             
             if (cmd === "SYNC") {
-                // 1. Send the UI Layout Cards
                 for(let i=0; i<initCommands.length; i++) {
                     bluetooth.uartWriteString(initCommands[i] + "\n");
                     basic.pause(30); 
                 }
                 
-                // 2. HARDWARE AS SOURCE OF TRUTH: Dump the real-time physical state to snap the UI into position!
                 for(let i=0; i<initCommands.length; i++) {
                     let parts = initCommands[i].split(":");
                     if (parts.length >= 2) {
@@ -143,6 +187,8 @@ namespace makerlink {
     //% weight=89
     export function initServo(servo: ServoID, start: number, pos1: number, pos2: number): void {
         servoVals[servo] = start;
+        servoCurrent[servo] = start; // Lock initial physics to start angle
+        servoDelay[servo] = 0;
         let cmd = "INIT:" + getServoStr(servo) + ",SERVO," + start + "," + pos1 + "," + pos2;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
@@ -216,26 +262,18 @@ namespace makerlink {
     }
 
     /**
-     * Sets the servo angle (0 to 180)
+     * Sets the servo angle smoothly in hardware
      */
-    //% block="MakerLink set servo $servo to $angle degrees"
+    //% block="MakerLink set servo $servo to $angle degrees || with delay $delay ms"
     //% group="Write (Actions)"
+    //% expandableArgumentMode="toggle"
     //% angle.min=0 angle.max=180
+    //% delay.defl=0
     //% weight=79
-    export function setServo(servo: ServoID, angle: number): void {
+    export function setServo(servo: ServoID, angle: number, delay: number = 0): void {
         let val = Math.max(0, Math.min(180, angle));
-        servoVals[servo] = val; 
-
-        let mbServo = MotionBitServoChannel.S1;
-        if (servo == ServoID.S2) mbServo = MotionBitServoChannel.S2;
-        if (servo == ServoID.S3) mbServo = MotionBitServoChannel.S3;
-        if (servo == ServoID.S4) mbServo = MotionBitServoChannel.S4;
-        if (servo == ServoID.S5) mbServo = MotionBitServoChannel.S5;
-        if (servo == ServoID.S6) mbServo = MotionBitServoChannel.S6;
-        if (servo == ServoID.S7) mbServo = MotionBitServoChannel.S7;
-        if (servo == ServoID.S8) mbServo = MotionBitServoChannel.S8;
-
-        motionbit.setServoPosition(mbServo, val);
+        servoVals[servo] = val; // Set Target
+        servoDelay[servo] = Math.max(0, delay); // Hardware Engine takes over!
     }
 
     /**
@@ -296,7 +334,7 @@ namespace makerlink {
     export function getMotorValue(motor: MotorID): number { return motorVals[motor]; }
 
     /**
-     * Read the latest Servo angle received from the Web App
+     * Read the latest Target Servo angle received from the Web App
      */
     //% block="MakerLink Servo $servo value"
     //% group="Read (Variables)"
@@ -371,16 +409,6 @@ namespace makerlink {
     //% weight=56
     export function sendServo(servo: ServoID, val: number): void {
         bluetooth.uartWriteString(getServoStr(servo) + ":" + val + "\n");
-    }
-
-    /**
-     * Send a text message or error log to the Web App Terminal
-     */
-    //% block="📤 Update Dashboard Terminal with $msg"
-    //% group="Send (Update Dashboard)"
-    //% weight=55
-    export function sendTerminalMessage(msg: string): void {
-        bluetooth.uartWriteString("LOG:" + msg + "\n");
     }
 
     /**
