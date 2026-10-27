@@ -28,7 +28,7 @@ namespace makerlink {
     let analogVals = [0, 0, 0, 0, 0, 0, 0, 0];
     let digitalVals = [0, 0, 0, 0, 0, 0, 0, 0];
     let textVals = ["", "", "", ""];
-    let ledVal = 0; // Now stores the 25-bit integer!
+    let ledVal = 0; 
 
     // ==============================================
     // UTILITIES
@@ -97,15 +97,23 @@ namespace makerlink {
             let idx = parseInt(id.charAt(1)) - 1;
             if (idx >= 0 && idx <= 3) {
                 textVals[idx] = valStr;
-                // Automatically scroll the text instantly when received!
+                
+                // Automatically scroll the text exactly once!
                 control.inBackground(function() {
                     basic.showString(valStr);
+                    basic.clearScreen(); // Erase the leftover last letter
+                    
+                    // Smart feature: Automatically restore the last LED Matrix drawing!
+                    for(let i = 0; i < 25; i++) {
+                        let x = i % 5;
+                        let y = Math.floor(i / 5);
+                        if ((ledVal & (1 << i)) !== 0) led.plot(x, y);
+                    }
                 });
             }
         } else if (id.charAt(0) == 'L') {
             let num = parseInt(valStr);
             ledVal = num;
-            // Decode the integer back into a 5x5 physical LED grid!
             control.inBackground(function() {
                 for(let i = 0; i < 25; i++) {
                     let x = i % 5;
@@ -269,7 +277,7 @@ namespace makerlink {
     //% group="Setup (On Start)"
     //% weight=86
     export function initText(stream: MLTextStream, mode: MLPinMode, val: string): void {
-        textVals[stream] = val; // FIX: Ensure text survives the SYNC handshake!
+        textVals[stream] = val; 
         let mStr = (mode == MLPinMode.IN) ? "IN" : "OUT"; 
         let cmd = "INIT:" + getTextStr(stream) + "," + mStr + "," + val;
         saveInitCmd(cmd);
