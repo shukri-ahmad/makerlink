@@ -8,10 +8,7 @@ namespace makerlink {
     export enum MotorID { M1, M2, M3, M4 }
     export enum ServoID { S1, S2, S3, S4, S5, S6, S7, S8 }
     
-    // Digital gets IN, OUT, and PUSH
     export enum MLPinMode { IN, OUT, PUSH } 
-    
-    // Analog & Text only get IN and OUT
     export enum MLDataMode { IN, OUT } 
 
     export enum MLAnalogStream { A1, A2, A3, A4, A5, A6, A7, A8 }
@@ -76,6 +73,15 @@ namespace makerlink {
     }
 
     function parseCommand(cmd: string) {
+        if (cmd === "STOPALL") {
+            motorVals = [0, 0, 0, 0];
+            motionbit.runMotor(MotionBitMotorChannel.M1, MotionBitMotorDirection.Forward, 0);
+            motionbit.runMotor(MotionBitMotorChannel.M2, MotionBitMotorDirection.Forward, 0);
+            motionbit.runMotor(MotionBitMotorChannel.M3, MotionBitMotorDirection.Forward, 0);
+            motionbit.runMotor(MotionBitMotorChannel.M4, MotionBitMotorDirection.Forward, 0);
+            return;
+        }
+
         let splitIdx = cmd.indexOf(':');
         if (splitIdx === -1) return;
         
