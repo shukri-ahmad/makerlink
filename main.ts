@@ -19,7 +19,6 @@ namespace makerlink {
     let isInitialized = false;
 
     let motorVals = [0, 0, 0, 0];
-    
     let servoVals = [90, 90, 90, 90, 90, 90, 90, 90]; 
     let servoCurrent = [90, 90, 90, 90, 90, 90, 90, 90]; 
     let servoDelay = [0, 0, 0, 0, 0, 0, 0, 0]; 
@@ -27,7 +26,10 @@ namespace makerlink {
     
     let analogVals = [0, 0, 0, 0, 0, 0, 0, 0];
     let digitalVals = [0, 0, 0, 0, 0, 0, 0, 0];
+    
     let textVals = ["", "", "", ""];
+    let textNewFlag = [false, false, false, false]; // Tracks if a message was just received!
+    
     let ledVal = 0; 
 
     // ==============================================
@@ -97,19 +99,7 @@ namespace makerlink {
             let idx = parseInt(id.charAt(1)) - 1;
             if (idx >= 0 && idx <= 3) {
                 textVals[idx] = valStr;
-                
-                // Automatically scroll the text exactly once in the background!
-                control.inBackground(function() {
-                    basic.showString(valStr);
-                    basic.clearScreen(); 
-                    
-                    // Restore LED Matrix automatically
-                    for(let i = 0; i < 25; i++) {
-                        let x = i % 5;
-                        let y = Math.floor(i / 5);
-                        if ((ledVal & (1 << i)) !== 0) led.plot(x, y);
-                    }
-                });
+                textNewFlag[idx] = true; // Alerts the MakeCode loop that new text is ready!
             }
         } else if (id.charAt(0) == 'L') {
             let num = parseInt(valStr);
@@ -190,23 +180,6 @@ namespace makerlink {
                         }
                     }
                 }
-
-                // Scroll initial text exactly once upon connection
-                control.inBackground(function() {
-                    for(let i=0; i<4; i++) {
-                        if (textVals[i] && textVals[i].length > 0) {
-                            basic.showString(textVals[i]);
-                            basic.clearScreen();
-                        }
-                    }
-                    for(let j = 0; j < 25; j++) {
-                        let x = j % 5;
-                        let y = Math.floor(j / 5);
-                        if ((ledVal & (1 << j)) !== 0) led.plot(x, y);
-                        else led.unplot(x, y);
-                    }
-                });
-
             } else {
                 parseCommand(cmd);
             }
@@ -370,6 +343,19 @@ namespace makerlink {
     // ==============================================
     // REPORTER VARIABLES (READ)
     // ==============================================
+
+    /**
+     * Checks if a NEW message just arrived from the dashboard!
+     * (Reading this block automatically clears it back to false).
+     */
+    //% block="MakerLink Text Stream $stream has new message?"
+    //% group="Read (Variables)"
+    //% weight=71
+    export function hasNewText(stream: MLTextStream): boolean { 
+        let isNew = textNewFlag[stream];
+        textNewFlag[stream] = false; // Reset the flag so it only triggers once!
+        return isNew; 
+    }
 
     //% block="MakerLink Motor $motor value"
     //% group="Read (Variables)"
