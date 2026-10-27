@@ -1,7 +1,7 @@
 {
     "name": "MakerLink",
     "version": "1.0.0",
-    "description": "Bi-directional Bluetooth extension for MAKEROBOT Ecosystem by MAKERSPACE@UTHM.",
+    "description": "Build cyber-physical projects with a real-time web dashboard. Designed for Cytron MOTIONBIT as part of the MAKEROBOT Ecosystem, created by MAKERSPACE@UTHM."",
     "dependencies": {
         "core": "*",
         "bluetooth": "*",
