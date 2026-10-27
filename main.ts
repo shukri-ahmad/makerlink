@@ -98,12 +98,12 @@ namespace makerlink {
             if (idx >= 0 && idx <= 3) {
                 textVals[idx] = valStr;
                 
-                // Automatically scroll the text exactly once!
+                // Automatically scroll the text exactly once in the background!
                 control.inBackground(function() {
                     basic.showString(valStr);
-                    basic.clearScreen(); // Erase the leftover last letter
+                    basic.clearScreen(); 
                     
-                    // Smart feature: Automatically restore the last LED Matrix drawing!
+                    // Restore LED Matrix automatically
                     for(let i = 0; i < 25; i++) {
                         let x = i % 5;
                         let y = Math.floor(i / 5);
@@ -132,9 +132,6 @@ namespace makerlink {
     // SETUP BLOCKS (on start)
     // ==============================================
 
-   /**
-     * Initializes MakerLink Bluetooth and listens for the Web App SYNC handshake.
-     */
     //% block="📡 MakerLink: Initialize"
     //% group="Setup (On Start)"
     //% weight=100
@@ -193,6 +190,23 @@ namespace makerlink {
                         }
                     }
                 }
+
+                // Scroll initial text exactly once upon connection
+                control.inBackground(function() {
+                    for(let i=0; i<4; i++) {
+                        if (textVals[i] && textVals[i].length > 0) {
+                            basic.showString(textVals[i]);
+                            basic.clearScreen();
+                        }
+                    }
+                    for(let j = 0; j < 25; j++) {
+                        let x = j % 5;
+                        let y = Math.floor(j / 5);
+                        if ((ledVal & (1 << j)) !== 0) led.plot(x, y);
+                        else led.unplot(x, y);
+                    }
+                });
+
             } else {
                 parseCommand(cmd);
             }
@@ -200,9 +214,6 @@ namespace makerlink {
         isInitialized = true;
     }
 
-    /**
-     * Initialize a DC Motor Card
-     */
     //% block="⚙️ Init Motor Card $motor | Start $startVal | CW Limit $cw | CCW Limit $ccw"
     //% startVal.defl=0 cw.defl=255 ccw.defl=255
     //% group="Setup (On Start)"
@@ -214,9 +225,6 @@ namespace makerlink {
         bluetooth.uartWriteString(cmd + "\n");
     }
 
-    /**
-     * Initialize a Servo Card
-     */
     //% block="🦾 Init Servo Card $servo | Start Angle $start | Pos 1 $pos1 | Pos 2 $pos2"
     //% start.defl=90 pos1.defl=0 pos2.defl=180
     //% group="Setup (On Start)"
@@ -233,9 +241,6 @@ namespace makerlink {
         bluetooth.uartWriteString(cmd + "\n");
     }
 
-    /**
-     * Initialize an Analog Data Stream
-     */
     //% block="📊 Init Analog Stream $stream | Mode $mode | Initial Val $val"
     //% val.defl=0
     //% group="Setup (On Start)"
@@ -250,9 +255,6 @@ namespace makerlink {
         bluetooth.uartWriteString(cmd + "\n");
     }
 
-    /**
-     * Initialize a Digital Data Stream
-     */
     //% block="🚥 Init Digital Stream $stream | Mode $mode | Initial Val $val"
     //% val.defl=0
     //% group="Setup (On Start)"
@@ -270,9 +272,6 @@ namespace makerlink {
         bluetooth.uartWriteString(cmd + "\n");
     }
 
-    /**
-     * Initialize a Text Data Stream
-     */
     //% block="📝 Init Text Stream $stream | Mode $mode | Initial Text $val"
     //% group="Setup (On Start)"
     //% weight=86
@@ -284,9 +283,6 @@ namespace makerlink {
         bluetooth.uartWriteString(cmd + "\n");
     }
 
-    /**
-     * Initialize the built-in LED Matrix 
-     */
     //% block="🔲 Init LED Matrix Card"
     //% group="Setup (On Start)"
     //% weight=85
@@ -302,9 +298,6 @@ namespace makerlink {
     // ACTION BLOCKS (AUTO-CONTROL)
     // ==============================================
 
-    /**
-     * Runs the motor (-255 to 255)
-     */
     //% block="MakerLink run motor $motor at speed $speed"
     //% group="Write (Actions)"
     //% speed.min=-255 speed.max=255
@@ -323,9 +316,6 @@ namespace makerlink {
         else motionbit.runMotor(mbMotor, MotionBitMotorDirection.Forward, 0);
     }
 
-    /**
-     * Sets the servo angle smoothly in hardware. 
-     */
     //% block="MakerLink set servo $servo to $angle degrees || with delay $delay ms"
     //% group="Write (Actions)"
     //% expandableArgumentMode="toggle"
@@ -338,9 +328,6 @@ namespace makerlink {
         servoDelay[servo] = Math.max(0, delay); 
     }
 
-    /**
-     * Physical Analog write mapping (0 to 1023)
-     */
     //% block="MakerLink write analog stream $stream to $val"
     //% group="Write (Actions)"
     //% val.min=0 val.max=1023
@@ -355,9 +342,6 @@ namespace makerlink {
         pins.analogWritePin(ap, v);
     }
 
-    /**
-     * Physical Digital write mapping (0 or 1)
-     */
     //% block="MakerLink write digital stream $stream to $val"
     //% group="Write (Actions)"
     //% val.min=0 val.max=1
@@ -387,41 +371,26 @@ namespace makerlink {
     // REPORTER VARIABLES (READ)
     // ==============================================
 
-    /**
-     * Read the latest Motor value received from the Web App
-     */
     //% block="MakerLink Motor $motor value"
     //% group="Read (Variables)"
     //% weight=70
     export function getMotorValue(motor: MotorID): number { return motorVals[motor]; }
 
-    /**
-     * Read the latest Target Servo angle received from the Web App
-     */
     //% block="MakerLink Servo $servo value"
     //% group="Read (Variables)"
     //% weight=69
     export function getServoValue(servo: ServoID): number { return servoVals[servo]; }
 
-    /**
-     * Read the latest Analog Stream value received from the Web App
-     */
     //% block="MakerLink Analog Stream $stream value"
     //% group="Read (Variables)"
     //% weight=68
     export function getAnalogValue(stream: MLAnalogStream): number { return analogVals[stream]; }
 
-    /**
-     * Read the latest Digital Stream state received from the Web App
-     */
     //% block="MakerLink Digital Stream $stream value"
     //% group="Read (Variables)"
     //% weight=67
     export function getDigitalValue(stream: MLDigitalStream): number { return digitalVals[stream]; }
 
-    /**
-     * Read the latest Text Stream message received from the Web App
-     */
     //% block="MakerLink Text Stream $stream value"
     //% group="Read (Variables)"
     //% weight=66
@@ -431,9 +400,6 @@ namespace makerlink {
     // SEND BLOCKS (UPDATE DASHBOARD)
     // ==============================================
 
-    /**
-     * Send Analog Stream data to update the Web App Chart
-     */
     //% block="📤 Update Dashboard Analog Stream $stream to $val"
     //% group="Send (Update Dashboard)"
     //% weight=60
@@ -441,9 +407,6 @@ namespace makerlink {
         bluetooth.uartWriteString(getAnalogStr(stream) + ":" + val + "\n");
     }
 
-    /**
-     * Send Digital Stream data to update the Web App State
-     */
     //% block="📤 Update Dashboard Digital Stream $stream to $val"
     //% group="Send (Update Dashboard)"
     //% weight=59
@@ -451,9 +414,6 @@ namespace makerlink {
         bluetooth.uartWriteString(getDigitalStr(stream) + ":" + val + "\n");
     }
 
-    /**
-     * Send Text data to update the Web App Text Display
-     */
     //% block="📤 Update Dashboard Text Stream $stream to $val"
     //% group="Send (Update Dashboard)"
     //% weight=58
@@ -461,9 +421,6 @@ namespace makerlink {
         bluetooth.uartWriteString(getTextStr(stream) + ":" + val + "\n");
     }
 
-    /**
-     * Override the Web App Motor slider position
-     */
     //% block="📤 Update Dashboard Motor $motor to $val"
     //% group="Send (Update Dashboard)"
     //% weight=57
@@ -471,9 +428,6 @@ namespace makerlink {
         bluetooth.uartWriteString(getMotorStr(motor) + ":" + val + "\n");
     }
 
-    /**
-     * Override the Web App Servo angle text
-     */
     //% block="📤 Update Dashboard Servo $servo to $val"
     //% group="Send (Update Dashboard)"
     //% weight=56
@@ -481,10 +435,6 @@ namespace makerlink {
         bluetooth.uartWriteString(getServoStr(servo) + ":" + val + "\n");
     }
 
-    /**
-     * Sends a custom text log to the Web Dashboard Terminal.
-     * @param msg The message to send
-     */
     //% block="📤 Update Dashboard Terminal $msg"
     //% group="Communication & Telemetry"
     //% weight=70
