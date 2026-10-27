@@ -1,5 +1,5 @@
 {
-    "name": "MakerLink",
+    "name": "MakerLink Robotics",
     "version": "1.0.0",
     "description": "Build cyber-physical projects with a real-time web dashboard. Designed for Cytron MOTIONBIT as part of the MAKEROBOT Ecosystem, created by MAKERSPACE@UTHM."",
     "dependencies": {
