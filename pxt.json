@@ -1,6 +1,6 @@
 {
     "name": "MakerLink Robotics",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Connect your micro:bit to an interactive Web Bluetooth dashboard for real-time IoT and robotics. Designed for Cytron MOTIONBIT. Part of the MAKEROBOT Ecosystem, created by MAKERSPACE@UTHM.",
     "dependencies": {
         "core": "*",
