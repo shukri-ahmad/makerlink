@@ -74,11 +74,22 @@ namespace makerlink {
 
     function parseCommand(cmd: string) {
         if (cmd === "STOPALL") {
+            // 1. Kill Motors
             motorVals = [0, 0, 0, 0];
             motionbit.runMotor(MotionBitMotorChannel.M1, MotionBitMotorDirection.Forward, 0);
             motionbit.runMotor(MotionBitMotorChannel.M2, MotionBitMotorDirection.Forward, 0);
             motionbit.runMotor(MotionBitMotorChannel.M3, MotionBitMotorDirection.Forward, 0);
             motionbit.runMotor(MotionBitMotorChannel.M4, MotionBitMotorDirection.Forward, 0);
+            
+            // 2. Halt Servo Sweeps (Locks them in place safely)
+            for(let i = 0; i < 8; i++) {
+                servoVals[i] = servoCurrent[i]; 
+            }
+            
+            // 3. Clear Screen
+            ledVal = 0;
+            basic.clearScreen();
+            
             return;
         }
 
