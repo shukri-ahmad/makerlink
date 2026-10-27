@@ -25,6 +25,7 @@ namespace makerlink {
     let servoVals = [90, 90, 90, 90, 90, 90, 90, 90]; 
     let servoCurrent = [90, 90, 90, 90, 90, 90, 90, 90]; 
     let servoDelay = [0, 0, 0, 0, 0, 0, 0, 0]; 
+    let servoActiveDelay = [0, 0, 0, 0, 0, 0, 0, 0]; // Tracks real-time vs button delay
     let servoLast = [0, 0, 0, 0, 0, 0, 0, 0]; 
     
     let analogVals = [0, 0, 0, 0, 0, 0, 0, 0];
@@ -74,19 +75,16 @@ namespace makerlink {
 
     function parseCommand(cmd: string) {
         if (cmd === "STOPALL") {
-            // 1. Kill Motors
             motorVals = [0, 0, 0, 0];
             motionbit.runMotor(MotionBitMotorChannel.M1, MotionBitMotorDirection.Forward, 0);
             motionbit.runMotor(MotionBitMotorChannel.M2, MotionBitMotorDirection.Forward, 0);
             motionbit.runMotor(MotionBitMotorChannel.M3, MotionBitMotorDirection.Forward, 0);
             motionbit.runMotor(MotionBitMotorChannel.M4, MotionBitMotorDirection.Forward, 0);
             
-            // 2. Halt Servo Sweeps (Locks them in place safely)
             for(let i = 0; i < 8; i++) {
                 servoVals[i] = servoCurrent[i]; 
             }
             
-            // 3. Clear Screen
             ledVal = 0;
             basic.clearScreen();
             
@@ -108,8 +106,15 @@ namespace makerlink {
             if (idx >= 0 && idx <= 7) {
                 servoVals[idx] = val; 
                 let parts = valStr.split(':');
-                if (parts.length >= 2) {
+                if (parts.length >= 2 && parts[1] === "SLIDER") {
+                    // Instantly follow the finger without lag!
+                    servoActiveDelay[idx] = 0;
+                } else if (parts.length >= 2) {
                     servoDelay[idx] = Math.max(0, parseInt(parts[1]));
+                    servoActiveDelay[idx] = servoDelay[idx];
+                } else {
+                    // Revert back to the configured MakeCode block delay for buttons!
+                    servoActiveDelay[idx] = servoDelay[idx];
                 }
             }
         } else if (id.charAt(0) == 'A') {
@@ -157,11 +162,11 @@ namespace makerlink {
                 let now = control.millis();
                 for (let i = 0; i < 8; i++) {
                     if (servoCurrent[i] !== servoVals[i]) {
-                        if (servoDelay[i] <= 0) {
+                        if (servoActiveDelay[i] <= 0) {
                             servoCurrent[i] = servoVals[i]; 
                             applyServoPhysical(i, servoCurrent[i]);
                         } else {
-                            if (now - servoLast[i] >= servoDelay[i]) {
+                            if (now - servoLast[i] >= servoActiveDelay[i]) {
                                 servoLast[i] = now;
                                 if (servoCurrent[i] < servoVals[i]) servoCurrent[i]++;
                                 else servoCurrent[i]--;
@@ -245,6 +250,7 @@ namespace makerlink {
         servoVals[servo] = start;
         servoCurrent[servo] = start;
         servoDelay[servo] = 0;
+        servoActiveDelay[servo] = 0;
         
         applyServoPhysical(servo, start); 
 
@@ -338,6 +344,7 @@ namespace makerlink {
         let val = Math.max(0, Math.min(180, angle));
         servoVals[servo] = val; 
         servoDelay[servo] = Math.max(0, delay); 
+        servoActiveDelay[servo] = servoDelay[servo]; // Updates active memory
     }
 
     //% block="MakerLink write analog stream $stream to $val"
