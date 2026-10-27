@@ -1,5 +1,5 @@
 {
-    "name": "MakerLink",
+    "name": "MakerLink-Robotics",
     "version": "1.0.2",
     "description": "Bi-directional Web Bluetooth extension for MAKEROBOT Ecosystem by MAKERSPACE@UTHM.",
     "dependencies": {
