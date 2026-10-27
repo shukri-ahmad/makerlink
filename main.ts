@@ -7,7 +7,13 @@ namespace makerlink {
     // ==============================================
     export enum MotorID { M1, M2, M3, M4 }
     export enum ServoID { S1, S2, S3, S4, S5, S6, S7, S8 }
+    
+    // Digital gets IN, OUT, and PUSH
     export enum MLPinMode { IN, OUT, PUSH } 
+    
+    // Analog & Text only get IN and OUT
+    export enum MLDataMode { IN, OUT } 
+
     export enum MLAnalogStream { A1, A2, A3, A4, A5, A6, A7, A8 }
     export enum MLDigitalStream { D1, D2, D3, D4, D5, D6, D7, D8 }
     export enum MLTextStream { T1, T2, T3, T4 }
@@ -28,7 +34,7 @@ namespace makerlink {
     let digitalVals = [0, 0, 0, 0, 0, 0, 0, 0];
     
     let textVals = ["", "", "", ""];
-    let textNewFlag = [false, false, false, false]; // Tracks if a message was just received!
+    let textNewFlag = [false, false, false, false]; 
     
     let ledVal = 0; 
 
@@ -99,7 +105,7 @@ namespace makerlink {
             let idx = parseInt(id.charAt(1)) - 1;
             if (idx >= 0 && idx <= 3) {
                 textVals[idx] = valStr;
-                textNewFlag[idx] = true; // Alerts the MakeCode loop that new text is ready!
+                textNewFlag[idx] = true; 
             }
         } else if (id.charAt(0) == 'L') {
             let num = parseInt(valStr);
@@ -180,6 +186,22 @@ namespace makerlink {
                         }
                     }
                 }
+
+                control.inBackground(function() {
+                    for(let i=0; i<4; i++) {
+                        if (textVals[i] && textVals[i].length > 0) {
+                            basic.showString(textVals[i]);
+                            basic.clearScreen();
+                        }
+                    }
+                    for(let j = 0; j < 25; j++) {
+                        let x = j % 5;
+                        let y = Math.floor(j / 5);
+                        if ((ledVal & (1 << j)) !== 0) led.plot(x, y);
+                        else led.unplot(x, y);
+                    }
+                });
+
             } else {
                 parseCommand(cmd);
             }
@@ -218,11 +240,11 @@ namespace makerlink {
     //% val.defl=0
     //% group="Setup (On Start)"
     //% weight=88
-    export function initAnalog(stream: MLAnalogStream, mode: MLPinMode, val: number): void {
-        if (mode == MLPinMode.OUT || mode == MLPinMode.PUSH) { writeAnalog(stream, val); } 
+    export function initAnalog(stream: MLAnalogStream, mode: MLDataMode, val: number): void {
+        if (mode == MLDataMode.OUT) { writeAnalog(stream, val); } 
         else { analogVals[stream] = val; }
         
-        let mStr = (mode == MLPinMode.IN) ? "IN" : "OUT";
+        let mStr = (mode == MLDataMode.IN) ? "IN" : "OUT";
         let cmd = "INIT:" + getAnalogStr(stream) + "," + mStr + "," + val;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
@@ -248,9 +270,9 @@ namespace makerlink {
     //% block="📝 Init Text Stream $stream | Mode $mode | Initial Text $val"
     //% group="Setup (On Start)"
     //% weight=86
-    export function initText(stream: MLTextStream, mode: MLPinMode, val: string): void {
+    export function initText(stream: MLTextStream, mode: MLDataMode, val: string): void {
         textVals[stream] = val; 
-        let mStr = (mode == MLPinMode.IN) ? "IN" : "OUT"; 
+        let mStr = (mode == MLDataMode.IN) ? "IN" : "OUT"; 
         let cmd = "INIT:" + getTextStr(stream) + "," + mStr + "," + val;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
@@ -353,7 +375,7 @@ namespace makerlink {
     //% weight=71
     export function hasNewText(stream: MLTextStream): boolean { 
         let isNew = textNewFlag[stream];
-        textNewFlag[stream] = false; // Reset the flag so it only triggers once!
+        textNewFlag[stream] = false; 
         return isNew; 
     }
 
