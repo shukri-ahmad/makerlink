@@ -1,19 +1,14 @@
 {
-    "name": "MakerLink Robotics",
+    "name": "MakerLink",
     "version": "1.0.2",
-    "description": "Web Bluetooth dashboard for real-time IoT and robotics by MAKERSPACE@UTHM.",
+    "description": "Bi-directional Web Bluetooth extension for MAKEROBOT Ecosystem by MAKERSPACE@UTHM.",
     "dependencies": {
         "core": "*",
         "bluetooth": "*",
         "motionbit": "github:cytrontechnologies/pxt-motionbit"
     },
     "files": [
-        "main.blocks",
-        "main.ts",
-        "README.md"
-    ],
-    "testFiles": [
-        "test.ts"
+        "main.ts"
     ],
     "public": true
 }
