@@ -130,46 +130,6 @@
             saveLayoutOrder();
         }
 
-        function updateServoLimits(id) {
-            let p1El = document.getElementById(`pos1-val-${id}`);
-            let p2El = document.getElementById(`pos2-val-${id}`);
-            if(!p1El || !p2El) return;
-            
-            let p1 = parseInt(p1El.value) || 0;
-            let p2 = parseInt(p2El.value) || 180;
-            
-            let outOfBounds = false;
-            if(p1 < 0) { p1 = 0; outOfBounds = true; }
-            if(p1 > 180) { p1 = 180; outOfBounds = true; }
-            if(p2 < 0) { p2 = 0; outOfBounds = true; }
-            if(p2 > 180) { p2 = 180; outOfBounds = true; }
-
-            if(outOfBounds) {
-                showMsg(`⚠️ Servo limits must be between 0° and 180°`);
-                p1El.value = p1;
-                p2El.value = p2;
-            }
-
-            let sl = document.getElementById(`slider-${id}`);
-            if(sl) {
-                sl.min = Math.min(p1, p2);
-                sl.max = Math.max(p1, p2);
-                
-                let cVal = parseInt(sl.value);
-                let bounded = Math.max(sl.min, Math.min(sl.max, cVal));
-                
-                if(cVal !== bounded) {
-                    sl.value = bounded;
-                    updateVal(id, bounded); 
-                    sendBluetoothCommand(`${id}:${bounded}`);
-                    showMsg(`⚠️ Angle clamped to ${bounded}° (Hardware Limit)`);
-                } else {
-                    updateVal(id, cVal); 
-                }
-            }
-            if(isCloudActive) syncCloud();
-        }
-
         function pingBluetooth() {
             const p = document.getElementById('ping-indicator');
             if(!p) return;
@@ -319,36 +279,37 @@
             if(sl && sl.value != v) sl.value = v;
         }
 
-        // NEW: Controls the Red Warning Glowing Effect on the Angle Text
         function updateVal(id, val) { 
             let valEl = document.getElementById(`val-${id}`);
-            let el = document.getElementById(`slider-${id}`); 
-            
-            if(el && valEl && id.startsWith('S')) {
-                let minB = parseInt(el.min);
-                let maxB = parseInt(el.max);
-                if(val <= minB || val >= maxB) {
-                    valEl.style.color = '#ef4444'; // Red
-                    valEl.style.textShadow = '0px 0px 8px rgba(239, 68, 68, 0.8)'; 
-                } else {
-                    valEl.style.color = '#60a5fa'; // Blue
-                    valEl.style.textShadow = 'none';
-                }
-            }
             if(valEl) valEl.innerText = val + (id.startsWith('S') ? '°' : ''); 
             advancedData[id] = Number(val) || val; 
         }
 
         function createPlayingCard(id, type, mode, startVals) {
             
+            // If card exists, seamlessly update its locked limits from MakeCode sync!
             if(document.getElementById(`card-${id}`)) {
                 if (type === 'servo' && startVals) {
-                    let p1El = document.getElementById(`pos1-val-${id}`);
-                    let p2El = document.getElementById(`pos2-val-${id}`);
-                    if(p1El && p2El) {
-                        p1El.value = startVals[1] !== undefined ? parseInt(startVals[1]) : 0;
-                        p2El.value = startVals[2] !== undefined ? parseInt(startVals[2]) : 180;
-                        updateServoLimits(id); 
+                    let p1 = startVals[1] !== undefined ? parseInt(startVals[1]) : 0;
+                    let p2 = startVals[2] !== undefined ? parseInt(startVals[2]) : 180;
+                    let minBound = Math.min(p1, p2);
+                    let maxBound = Math.max(p1, p2);
+                    
+                    let d1 = document.getElementById(`pos1-val-display-${id}`);
+                    let d2 = document.getElementById(`pos2-val-display-${id}`);
+                    if(d1) d1.innerText = p1;
+                    if(d2) d2.innerText = p2;
+                    
+                    let sl = document.getElementById(`slider-${id}`);
+                    if(sl) {
+                        sl.min = minBound;
+                        sl.max = maxBound;
+                        let cVal = parseInt(sl.value);
+                        let bounded = Math.max(minBound, Math.min(maxBound, cVal));
+                        if(cVal !== bounded) {
+                            sl.value = bounded;
+                            updateVal(id, bounded);
+                        }
                     }
                 } else if (type === 'motor' && startVals) {
                     let cwEl = document.getElementById(`cw-spd-${id}`);
@@ -487,21 +448,20 @@
                 let maxBound = Math.max(p1, p2);
                 
                 let sVal = startVals[0] !== undefined ? parseInt(startVals[0]) : 90;
-                let isLimit = sVal <= minBound || sVal >= maxBound;
                 sVal = Math.max(minBound, Math.min(maxBound, sVal));
                 
-                let colorStyle = isLimit ? 'color: #ef4444; text-shadow: 0px 0px 8px rgba(239, 68, 68, 0.8);' : 'color: #60a5fa; text-shadow: none;';
-                
-                html += `<div id="val-${id}" class="text-5xl font-mono font-bold mb-4 transition-colors" style="${colorStyle}">${sVal}°</div><input type="range" id="slider-${id}" min="${minBound}" max="${maxBound}" value="${sVal}" oninput="updateVal('${id}', this.value); sendBluetoothCommand('${id}:'+this.value);" class="w-full mb-4 mt-auto">
+                // NO RED COLORS - just absolute strict UI limits dictated by MakeCode!
+                html += `<div id="val-${id}" class="text-5xl font-mono text-blue-400 font-bold mb-4">${sVal}°</div>
+                         <input type="range" id="slider-${id}" min="${minBound}" max="${maxBound}" value="${sVal}" oninput="updateVal('${id}', this.value); sendBluetoothCommand('${id}:'+this.value);" class="w-full mb-4 mt-auto">
                          <div class="flex gap-3 w-full">
                              <div class="flex-1 flex flex-col gap-1">
                                  <label class="text-[9px] text-slate-500 text-center font-bold">ANGLE</label>
-                                 <input type="number" id="pos1-val-${id}" value="${p1}" readonly onchange="updateServoLimits('${id}')" class="ui-editable-num w-full bg-slate-900 border border-slate-600 rounded px-1 py-1 text-center text-xs font-mono text-blue-400 shadow-inner mb-1">
+                                 <div class="w-full bg-slate-900 border border-slate-600 rounded px-1 py-1 text-center text-xs font-mono text-blue-400 shadow-inner mb-1" id="pos1-val-display-${id}">${p1}</div>
                                  <input type="text" id="btn-pos1-${id}" value="Pos 1" readonly onclick="if(!isEditMode) setServoPos('${id}', 1)" class="ui-btn-editable w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-1.5 px-1 rounded-lg shadow-lg border border-blue-700/50 cursor-pointer text-center focus:outline-none truncate">
                              </div>
                              <div class="flex-1 flex flex-col gap-1">
                                  <label class="text-[9px] text-slate-500 text-center font-bold">ANGLE</label>
-                                 <input type="number" id="pos2-val-${id}" value="${p2}" readonly onchange="updateServoLimits('${id}')" class="ui-editable-num w-full bg-slate-900 border border-slate-600 rounded px-1 py-1 text-center text-xs font-mono text-blue-400 shadow-inner mb-1">
+                                 <div class="w-full bg-slate-900 border border-slate-600 rounded px-1 py-1 text-center text-xs font-mono text-blue-400 shadow-inner mb-1" id="pos2-val-display-${id}">${p2}</div>
                                  <input type="text" id="btn-pos2-${id}" value="Pos 2" readonly onclick="if(!isEditMode) setServoPos('${id}', 2)" class="ui-btn-editable w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-1.5 px-1 rounded-lg shadow-lg border border-blue-700/50 cursor-pointer text-center focus:outline-none truncate">
                              </div>
                          </div>`;
@@ -526,7 +486,7 @@
         function pushSensorData(id, val) { if(!sensorCharts[id]) return; const chart = sensorCharts[id]; const xmaxEl = document.getElementById(`xmax-${id}`); const maxPts = (xmaxEl && xmaxEl.value !== "") ? parseInt(xmaxEl.value) : 0; chart.data.labels.push(''); chart.data.datasets[0].data.push(val); if(maxPts > 0 && chart.data.labels.length > maxPts) { chart.data.labels.shift(); chart.data.datasets[0].data.shift(); } chart.update(); }
         
         function setServoPos(id, posNum) { 
-            let targetVal = parseInt(document.getElementById(`pos${posNum}-val-${id}`).value) || 0; 
+            let targetVal = parseInt(document.getElementById(`pos${posNum}-val-display-${id}`).innerText) || 0; 
             const slider = document.getElementById(`slider-${id}`); 
             if (slider) slider.value = targetVal; 
             updateVal(id, targetVal); 
@@ -641,31 +601,8 @@
                 }
                 else if (cardData.type === 'servo') { 
                     let el = document.getElementById(`slider-${id}`); 
-                    let valEl = document.getElementById(`val-${id}`);
-                    if(el) { 
-                        let minB = parseInt(el.min);
-                        let maxB = parseInt(el.max);
-                        let isLimit = false;
-                        
-                        if (valNum <= minB || valNum >= maxB) {
-                            if (valNum < minB || valNum > maxB) {
-                                showMsg(`⚠️ ${id} clamped to ${minB}° - ${maxB}° (Hardware Limit)`);
-                            }
-                            valNum = Math.max(minB, Math.min(maxB, valNum));
-                            isLimit = true;
-                        }
-                        el.value = valNum; 
-                        
-                        if(valEl) {
-                            if(isLimit) {
-                                valEl.style.color = '#ef4444';
-                                valEl.style.textShadow = '0px 0px 8px rgba(239, 68, 68, 0.8)';
-                            } else {
-                                valEl.style.color = '#60a5fa';
-                                valEl.style.textShadow = 'none';
-                            }
-                        }
-                    } 
+                    if(el) el.value = valNum; 
+                    let valEl = document.getElementById(`val-${id}`); 
                     if(valEl) valEl.innerText = valNum + '°'; 
                 }
             }
@@ -729,8 +666,9 @@
                     } else if (info.type === 'digital' && info.mode === 'PUSH') {
                         cardData.btnPush = document.getElementById(`btn-push-${id}`)?.value || "HOLD";
                     } else if (info.type === 'servo') {
-                        cardData.pos1Val = Number(document.getElementById(`pos1-val-${id}`).value) || 0; 
-                        cardData.pos2Val = Number(document.getElementById(`pos2-val-${id}`).value) || 180;
+                        // Read from the locked display element!
+                        cardData.pos1Val = Number(document.getElementById(`pos1-val-display-${id}`).innerText) || 0; 
+                        cardData.pos2Val = Number(document.getElementById(`pos2-val-display-${id}`).innerText) || 180;
                         cardData.btnPos1 = document.getElementById(`btn-pos1-${id}`)?.value || "Pos 1"; 
                         cardData.btnPos2 = document.getElementById(`btn-pos2-${id}`)?.value || "Pos 2";
                     } else if (info.type === 'motor') {
