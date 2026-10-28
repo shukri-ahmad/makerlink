@@ -157,11 +157,14 @@
                 
                 let cVal = parseInt(sl.value);
                 let bounded = Math.max(sl.min, Math.min(sl.max, cVal));
+                
                 if(cVal !== bounded) {
                     sl.value = bounded;
-                    updateVal(id, bounded);
+                    updateVal(id, bounded); 
                     sendBluetoothCommand(`${id}:${bounded}`);
                     showMsg(`⚠️ Angle clamped to ${bounded}° (Hardware Limit)`);
+                } else {
+                    updateVal(id, cVal); 
                 }
             }
             if(isCloudActive) syncCloud();
@@ -316,9 +319,28 @@
             if(sl && sl.value != v) sl.value = v;
         }
 
+        // NEW: Controls the Red Warning Glowing Effect on the Angle Text
+        function updateVal(id, val) { 
+            let valEl = document.getElementById(`val-${id}`);
+            let el = document.getElementById(`slider-${id}`); 
+            
+            if(el && valEl && id.startsWith('S')) {
+                let minB = parseInt(el.min);
+                let maxB = parseInt(el.max);
+                if(val <= minB || val >= maxB) {
+                    valEl.style.color = '#ef4444'; // Red
+                    valEl.style.textShadow = '0px 0px 8px rgba(239, 68, 68, 0.8)'; 
+                } else {
+                    valEl.style.color = '#60a5fa'; // Blue
+                    valEl.style.textShadow = 'none';
+                }
+            }
+            if(valEl) valEl.innerText = val + (id.startsWith('S') ? '°' : ''); 
+            advancedData[id] = Number(val) || val; 
+        }
+
         function createPlayingCard(id, type, mode, startVals) {
             
-            // FIX: If card already exists, update its limits from MakeCode sync instead of ignoring it!
             if(document.getElementById(`card-${id}`)) {
                 if (type === 'servo' && startVals) {
                     let p1El = document.getElementById(`pos1-val-${id}`);
@@ -326,7 +348,7 @@
                     if(p1El && p2El) {
                         p1El.value = startVals[1] !== undefined ? parseInt(startVals[1]) : 0;
                         p2El.value = startVals[2] !== undefined ? parseInt(startVals[2]) : 180;
-                        updateServoLimits(id); // Force slider boundaries to update
+                        updateServoLimits(id); 
                     }
                 } else if (type === 'motor' && startVals) {
                     let cwEl = document.getElementById(`cw-spd-${id}`);
@@ -465,9 +487,12 @@
                 let maxBound = Math.max(p1, p2);
                 
                 let sVal = startVals[0] !== undefined ? parseInt(startVals[0]) : 90;
+                let isLimit = sVal <= minBound || sVal >= maxBound;
                 sVal = Math.max(minBound, Math.min(maxBound, sVal));
                 
-                html += `<div id="val-${id}" class="text-5xl font-mono text-blue-400 font-bold mb-4">${sVal}°</div><input type="range" id="slider-${id}" min="${minBound}" max="${maxBound}" value="${sVal}" oninput="updateVal('${id}', this.value); sendBluetoothCommand('${id}:'+this.value);" class="w-full mb-4 mt-auto">
+                let colorStyle = isLimit ? 'color: #ef4444; text-shadow: 0px 0px 8px rgba(239, 68, 68, 0.8);' : 'color: #60a5fa; text-shadow: none;';
+                
+                html += `<div id="val-${id}" class="text-5xl font-mono font-bold mb-4 transition-colors" style="${colorStyle}">${sVal}°</div><input type="range" id="slider-${id}" min="${minBound}" max="${maxBound}" value="${sVal}" oninput="updateVal('${id}', this.value); sendBluetoothCommand('${id}:'+this.value);" class="w-full mb-4 mt-auto">
                          <div class="flex gap-3 w-full">
                              <div class="flex-1 flex flex-col gap-1">
                                  <label class="text-[9px] text-slate-500 text-center font-bold">ANGLE</label>
@@ -499,8 +524,6 @@
         function initSensorChart(id) { const ctx = document.getElementById(`chart-${id}`).getContext('2d'); sensorCharts[id] = new Chart(ctx, { type: 'line', data: { labels: [], datasets: [{ data: [], borderColor: '#c084fc', tension: 0.2, pointRadius: 0, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } } }); }
         function updateSensorChartConfig(id) { const yMin = document.getElementById(`ymin-${id}`).value; const yMax = document.getElementById(`ymax-${id}`).value; if(sensorCharts[id]) { if (yMin === "") delete sensorCharts[id].options.scales.y.min; else sensorCharts[id].options.scales.y.min = parseFloat(yMin); if (yMax === "") delete sensorCharts[id].options.scales.y.max; else sensorCharts[id].options.scales.y.max = parseFloat(yMax); sensorCharts[id].update(); } }
         function pushSensorData(id, val) { if(!sensorCharts[id]) return; const chart = sensorCharts[id]; const xmaxEl = document.getElementById(`xmax-${id}`); const maxPts = (xmaxEl && xmaxEl.value !== "") ? parseInt(xmaxEl.value) : 0; chart.data.labels.push(''); chart.data.datasets[0].data.push(val); if(maxPts > 0 && chart.data.labels.length > maxPts) { chart.data.labels.shift(); chart.data.datasets[0].data.shift(); } chart.update(); }
-
-        function updateVal(id, val) { document.getElementById(`val-${id}`).innerText = val + (id.startsWith('S') ? '°' : ''); advancedData[id] = Number(val) || val; }
         
         function setServoPos(id, posNum) { 
             let targetVal = parseInt(document.getElementById(`pos${posNum}-val-${id}`).value) || 0; 
@@ -618,18 +641,31 @@
                 }
                 else if (cardData.type === 'servo') { 
                     let el = document.getElementById(`slider-${id}`); 
+                    let valEl = document.getElementById(`val-${id}`);
                     if(el) { 
                         let minB = parseInt(el.min);
                         let maxB = parseInt(el.max);
+                        let isLimit = false;
                         
-                        // FIX: Notify user if MakeCode attempts to send a telemetry value outside safe limits!
-                        if (valNum < minB || valNum > maxB) {
-                            showMsg(`⚠️ ${id} clamped to ${minB}° - ${maxB}° (Hardware Limit)`);
+                        if (valNum <= minB || valNum >= maxB) {
+                            if (valNum < minB || valNum > maxB) {
+                                showMsg(`⚠️ ${id} clamped to ${minB}° - ${maxB}° (Hardware Limit)`);
+                            }
                             valNum = Math.max(minB, Math.min(maxB, valNum));
+                            isLimit = true;
                         }
                         el.value = valNum; 
+                        
+                        if(valEl) {
+                            if(isLimit) {
+                                valEl.style.color = '#ef4444';
+                                valEl.style.textShadow = '0px 0px 8px rgba(239, 68, 68, 0.8)';
+                            } else {
+                                valEl.style.color = '#60a5fa';
+                                valEl.style.textShadow = 'none';
+                            }
+                        }
                     } 
-                    let valEl = document.getElementById(`val-${id}`); 
                     if(valEl) valEl.innerText = valNum + '°'; 
                 }
             }
