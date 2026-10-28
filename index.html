@@ -55,17 +55,11 @@
                 <p class="text-emerald-400 text-sm font-bold tracking-wide mt-1">Simplifying cyber-physical prototyping</p>
             </div>
         </div>
-        <div class="flex flex-wrap gap-3 justify-center items-center">
+        <div class="flex flex-wrap gap-3 justify-center">
             <button id="btnConnect" onclick="connectBluetooth()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-lg">🔌 Connect</button>
             <button id="btn-edit" onclick="toggleEditMode()" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg transition-colors min-w-[140px] shadow-lg">✏️ Edit Layout</button>
             <button id="btn-cloud" onclick="toggleCloud()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded-lg transition-colors min-w-[140px] shadow-lg">☁️ Go Public</button>
-            
-            <div class="flex bg-slate-900 border border-red-500/30 p-1 rounded-lg items-center shadow-lg">
-                <button id="btn-estop" onclick="triggerEStop()" class="bg-red-600 hover:bg-red-500 text-white font-black py-1.5 px-3 rounded-md transition-colors shadow-[0_0_10px_rgba(220,38,38,0.5)] border border-red-400 text-sm whitespace-nowrap">🚨 E-STOP</button>
-                <button id="vis-btn-estop" onclick="toggleVisibility('estop')" class="ml-1 text-[10px] border px-2 py-1 rounded cursor-pointer hover:opacity-80 transition-colors bg-blue-900/50 text-blue-400 border-blue-700" title="Toggle Public Visibility">👁️</button>
-            </div>
-
-            <button id="btn-clear" onclick="clearDashboard()" class="bg-red-900 hover:bg-red-800 text-white font-bold py-2 px-4 rounded-lg transition-colors min-w-[100px] shadow-lg">🗑️ Clear</button>
+            <button id="btn-clear" onclick="clearDashboard()" class="bg-red-900 hover:bg-red-800 text-white font-bold py-2 px-4 rounded-lg transition-colors min-w-[130px] shadow-lg">🗑️ Clear</button>
         </div>
     </header>
 
@@ -86,7 +80,6 @@
         <div id="dashboard-grid" class="flex flex-wrap gap-6 justify-center sm:justify-start"></div>
     </div>
 
-    <!-- Floating Powered By Badge -->
     <div class="fixed bottom-4 right-4 z-0 opacity-40 hover:opacity-100 transition-opacity flex items-center gap-2 pointer-events-none">
         <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Powered by</span>
         <img src="MAKEROBOT_ECO-Photoroom.jpg" alt="Makerobot Ecosystem" class="h-8 object-contain rounded mix-blend-screen pointer-events-auto">
@@ -121,13 +114,6 @@
                 tBtn.className = "ml-2 text-[10px] border px-1.5 py-0.5 rounded cursor-pointer hover:opacity-80 transition-colors bg-slate-700/50 text-slate-400 border-slate-600";
             }
         }
-        if (cardVisibility['estop'] === false) {
-            let eBtn = document.getElementById('vis-btn-estop');
-            if(eBtn) {
-                eBtn.innerText = "🙈";
-                eBtn.className = "ml-1 text-[10px] border px-2 py-1 rounded cursor-pointer hover:opacity-80 transition-colors bg-slate-700/50 text-slate-400 border-slate-600";
-            }
-        }
         
         function changeCardSize(id, delta) {
             let card = document.getElementById(`card-${id}`);
@@ -142,6 +128,26 @@
             card.style.width = cardSizes[currentSize];
             
             saveLayoutOrder();
+        }
+
+        // NEW: Function to dynamically update slider boundaries if user changes Pos1/Pos2 in edit mode
+        function updateServoLimits(id) {
+            let p1 = parseInt(document.getElementById(`pos1-val-${id}`).value) || 0;
+            let p2 = parseInt(document.getElementById(`pos2-val-${id}`).value) || 180;
+            let sl = document.getElementById(`slider-${id}`);
+            if(sl) {
+                sl.min = Math.min(p1, p2);
+                sl.max = Math.max(p1, p2);
+                
+                // If the current value is outside the new bounds, safely push it back in!
+                let cVal = parseInt(sl.value);
+                let bounded = Math.max(sl.min, Math.min(sl.max, cVal));
+                if(cVal !== bounded) {
+                    sl.value = bounded;
+                    updateVal(id, bounded);
+                    sendBluetoothCommand(`${id}:${bounded}`);
+                }
+            }
         }
 
         function pingBluetooth() {
@@ -199,36 +205,6 @@
         function escapeHTML(str) { return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag])); }
         function appendTerminal(msg) { const term = document.getElementById('terminal-output'); if (term.innerHTML.includes("Waiting for micro:bit SYNC...")) term.innerHTML = ''; const time = new Date().toLocaleTimeString('en-US', { hour12: false }); const line = document.createElement('div'); let colorClass = msg.toLowerCase().includes('error') || msg.toLowerCase().includes('fail') ? 'text-red-400' : 'text-emerald-400'; line.innerHTML = `<span class="text-slate-600 mr-2">[${time}]</span> <span class="${colorClass}">${escapeHTML(msg)}</span>`; term.appendChild(line); term.scrollTop = term.scrollHeight; if (isCloudActive && cloudRoomId) { db.ref('rooms/' + cloudRoomId + '/logs').push({ time: time, msg: msg, color: colorClass }); } }
 
-        function triggerEStop() {
-            sendBluetoothCommand("STOPALL");
-            Object.keys(activeCardTypes).forEach(id => {
-                let info = activeCardTypes[id];
-                if (info.type === 'motor') {
-                    advancedData[id] = 0;
-                    let el = document.getElementById(`val-${id}`);
-                    if (el) el.innerText = 'STOP (0)';
-                } else if (info.type === 'analog' && info.mode === 'OUT') {
-                    updateAnalogOutUI(id, 0);
-                    sendBluetoothCommand(`${id}:0`);
-                } else if (info.type === 'digital' && (info.mode === 'OUT' || info.mode === 'PUSH')) {
-                    updateDigitalUI(id, 0);
-                    sendBluetoothCommand(`${id}:0`);
-                } else if (info.type === 'led') {
-                    advancedData[id] = 0;
-                    updateLEDUI(id, 0);
-                    sendBluetoothCommand(`${id}:0`);
-                } else if (info.type === 'text' && info.mode === 'OUT') {
-                    let inEl = document.getElementById(`input-${id}`);
-                    if (inEl) inEl.value = "";
-                    let valEl = document.getElementById(`val-${id}`);
-                    if (valEl) valEl.innerText = "Ready to send";
-                    advancedData[id] = "";
-                    sendBluetoothCommand(`${id}: `); 
-                }
-            });
-            appendTerminal("🚨 EMERGENCY STOP TRIGGERED.");
-        }
-
         function togglePermission(id) {
             cardPermissions[id] = !cardPermissions[id];
             let btn = document.getElementById(`perm-btn-${id}`);
@@ -249,13 +225,12 @@
             cardVisibility[id] = cardVisibility[id] === false ? true : false;
             let btn = document.getElementById(`vis-btn-${id}`);
             if (btn) {
-                let base = id === 'estop' ? "ml-1 text-[10px] border px-2 py-1 rounded cursor-pointer hover:opacity-80 transition-colors" : "ml-2 text-[10px] border px-1.5 py-0.5 rounded cursor-pointer hover:opacity-80 transition-colors";
                 if (cardVisibility[id]) {
                     btn.innerText = "👁️";
-                    btn.className = base + " bg-blue-900/50 text-blue-400 border-blue-700";
+                    btn.className = "ml-2 text-[10px] border px-1.5 py-0.5 rounded cursor-pointer hover:opacity-80 transition-colors bg-blue-900/50 text-blue-400 border-blue-700";
                 } else {
                     btn.innerText = "🙈";
-                    btn.className = base + " bg-slate-700/50 text-slate-400 border-slate-600";
+                    btn.className = "ml-2 text-[10px] border px-1.5 py-0.5 rounded cursor-pointer hover:opacity-80 transition-colors bg-slate-700/50 text-slate-400 border-slate-600";
                 }
             }
             localStorage.setItem('makerlink_vis', JSON.stringify(cardVisibility));
@@ -298,38 +273,6 @@
             appendTerminal("Dashboard cleared manually."); 
         }
 
-        function toggleLED(id, i) {
-            let currentNum = parseInt(advancedData[id]) || 0;
-            currentNum = currentNum ^ (1 << i); 
-            advancedData[id] = currentNum;
-            updateLEDUI(id, currentNum);
-        }
-
-        function clearLED(id) {
-            advancedData[id] = 0;
-            updateLEDUI(id, 0);
-        }
-
-        function sendLED(id) {
-            let num = parseInt(advancedData[id]) || 0;
-            sendBluetoothCommand(`${id}:${num}`);
-        }
-
-        function updateLEDUI(id, valNum) {
-            let num = parseInt(valNum) || 0;
-            advancedData[id] = num;
-            for(let i=0; i<25; i++) {
-                let led = document.getElementById(`led-${id}-${i}`);
-                if(led) {
-                    if((num & (1 << i)) !== 0) {
-                        led.className = "w-7 h-7 rounded-sm cursor-pointer transition-colors bg-red-500 border border-red-400 shadow-[0_0_8px_rgba(239,68,68,0.8)]";
-                    } else {
-                        led.className = "w-7 h-7 rounded-sm bg-slate-800 cursor-pointer border border-slate-600 transition-colors";
-                    }
-                }
-            }
-        }
-
         function updateDigitalUI(id, val) {
             let v = Number(val); advancedData[id] = v; let valIn = document.getElementById(`val-${id}`);
             if(valIn) { 
@@ -365,23 +308,20 @@
             }
 
             activeCardTypes[id] = { type: type, mode: mode || "" }; 
-            
-            if (type === 'text') advancedData[id] = startVals && startVals[0] !== undefined ? startVals[0] : "";
-            else if (type === 'led') advancedData[id] = startVals && startVals[0] !== undefined ? parseInt(startVals[0]) : 0;
-            else advancedData[id] = startVals && startVals[0] !== undefined ? Number(startVals[0]) : 0;
+            advancedData[id] = startVals && startVals[0] !== undefined ? (type === 'text' ? startVals[0] : Number(startVals[0])) : (type === 'text' ? "" : 0);
             
             const card = document.createElement('div'); 
             
-            let borderTheme = type === 'analog' ? 'border-purple-500/60' : type === 'digital' ? 'border-emerald-500/60' : type === 'motor' ? 'border-orange-500/60' : type === 'text' ? 'border-pink-500/60' : type === 'led' ? 'border-yellow-500/60' : 'border-blue-500/60';
+            let borderTheme = type === 'analog' ? 'border-purple-500/60' : type === 'digital' ? 'border-emerald-500/60' : type === 'motor' ? 'border-orange-500/60' : type === 'text' ? 'border-pink-500/60' : 'border-blue-500/60';
             
             card.className = `maker-card bg-slate-800 rounded-xl border-2 ${borderTheme} shadow-lg relative z-10`; 
             card.id = `card-${id}`;
             card.setAttribute('data-size', '0');
 
-            let colorClass = type === 'analog' ? 'text-purple-400' : type === 'digital' ? 'text-emerald-400' : type === 'motor' ? 'text-orange-400' : type === 'text' ? 'text-pink-400' : type === 'led' ? 'text-yellow-400' : 'text-blue-400';
-            let iconStr = type === 'analog' ? '📊' : type === 'digital' ? '🚥' : type === 'motor' ? '⚙️' : type === 'text' ? '📝' : type === 'led' ? '🔲' : '🦾';
+            let colorClass = type === 'analog' ? 'text-purple-400' : type === 'digital' ? 'text-emerald-400' : type === 'motor' ? 'text-orange-400' : type === 'text' ? 'text-pink-400' : 'text-blue-400';
+            let iconStr = type === 'analog' ? '📊' : type === 'digital' ? '🚥' : type === 'motor' ? '⚙️' : type === 'text' ? '📝' : '🦾';
 
-            let isOutput = (type === 'analog' && mode === 'OUT') || (type === 'digital' && (mode === 'OUT' || mode === 'PUSH')) || (type === 'text' && mode === 'OUT') || type === 'motor' || type === 'servo' || type === 'led';
+            let isOutput = (type === 'analog' && mode === 'OUT') || (type === 'digital' && (mode === 'OUT' || mode === 'PUSH')) || type === 'motor' || type === 'servo';
             
             let headerBtnsHTML = '';
             
@@ -397,14 +337,7 @@
             let visClass = cardVisibility[id] !== false ? "bg-blue-900/50 text-blue-400 border-blue-700" : "bg-slate-700/50 text-slate-400 border-slate-600";
             headerBtnsHTML += `<button id="vis-btn-${id}" onclick="toggleVisibility('${id}')" class="ml-2 text-[10px] border px-1.5 py-0.5 rounded cursor-pointer hover:opacity-80 transition-colors ${visClass}" title="Toggle Public Visibility">${visLabel}</button>`;
 
-            let html = `<div class="p-3 bg-slate-900 border-b-2 ${borderTheme} flex justify-between items-center rounded-t-xl">
-                            <div class="flex items-center gap-2">
-                                <span class="font-bold text-sm ${colorClass}">${id}</span>
-                                <span class="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400 border border-slate-700">${iconStr} ${mode ? mode : type.toUpperCase()}</span>
-                            </div>
-                            <div class="flex items-center">${headerBtnsHTML}</div>
-                        </div>
-                        <div class="p-4 flex-1 min-h-0 flex flex-col items-center justify-center bg-slate-800 overflow-hidden">`;
+            let html = `<div class="p-3 bg-slate-900 border-b-2 ${borderTheme} flex justify-between items-center rounded-t-xl"><div class="flex items-center gap-2"><span class="font-bold text-sm ${colorClass}">${id}</span><span class="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400 border border-slate-700">${iconStr} ${mode ? mode : type.toUpperCase()}</span></div><div class="flex items-center">${headerBtnsHTML}</div></div><div class="p-4 flex-1 min-h-0 flex flex-col items-center justify-center bg-slate-800 overflow-hidden">`;
 
             if (type === 'analog' && mode === 'IN') {
                 html += `<div class="w-full flex-1 relative min-h-[120px] bg-slate-900 rounded-lg border border-slate-700 mb-4 flex items-center justify-center overflow-hidden">
@@ -460,26 +393,9 @@
                                 class="ui-btn-editable w-full py-3 px-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-white font-bold text-lg shadow-lg active:bg-purple-700 transition-all border border-purple-500 text-center cursor-pointer focus:outline-none truncate select-none">
                          </div>`;
             } 
-            else if (type === 'text' && mode === 'IN') {
+            else if (type === 'text') {
                 let displayTxt = startVals && startVals[0] !== undefined ? startVals[0] : "";
                 html += `<div class="w-full h-full overflow-y-auto custom-scrollbar flex p-2"><div id="val-${id}" class="m-auto w-full text-center text-3xl font-bold text-pink-400 break-words whitespace-pre-wrap">${displayTxt}</div></div>`;
-            }
-            else if (type === 'text' && mode === 'OUT') {
-                let displayTxt = startVals && startVals[0] !== undefined ? startVals[0] : "";
-                html += `<div class="w-full flex-1 flex flex-col justify-center items-center gap-4 mt-8">
-                            <input type="text" id="input-${id}" placeholder="Type message..." class="w-full bg-slate-900 border border-pink-500/50 rounded-lg px-4 py-3 text-pink-400 font-bold focus:outline-none focus:border-pink-500 shadow-inner">
-                            <button onclick="if(!isEditMode) { let val = document.getElementById('input-${id}').value; sendBluetoothCommand('${id}:'+val); document.getElementById('val-${id}').innerText = 'Sent: ' + val; advancedData['${id}'] = val; document.getElementById('input-${id}').value = ''; }" class="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-3 rounded-lg transition-colors shadow-lg active:bg-pink-700 border border-pink-500">Send to micro:bit</button>
-                            <div id="val-${id}" class="text-xs text-slate-500 truncate w-full text-center mt-auto font-mono">${displayTxt ? 'Ready: ' + displayTxt : 'Ready to send'}</div>
-                         </div>`;
-            }
-            else if (type === 'led') {
-                html += `<div class="grid grid-cols-5 gap-2 my-auto p-4 bg-slate-900 rounded-xl border border-slate-700 shadow-inner">
-                            ${Array.from({length: 25}).map((_, i) => `<div id="led-${id}-${i}" onclick="if(!isEditMode) toggleLED('${id}', ${i})" class="w-7 h-7 rounded-sm bg-slate-800 cursor-pointer border border-slate-600 transition-colors"></div>`).join('')}
-                         </div>
-                         <div class="flex justify-between w-full mt-auto gap-3">
-                             <button id="btn-clear-led-${id}" onclick="if(!isEditMode) clearLED('${id}')" class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold py-2 px-4 rounded-lg text-xs transition-colors border border-slate-600 shadow">CLEAR</button>
-                             <button id="btn-send-led-${id}" onclick="if(!isEditMode) sendLED('${id}')" class="flex-1 bg-yellow-600 hover:bg-yellow-500 text-yellow-950 font-bold py-2 rounded-lg text-xs transition-colors border border-yellow-500 shadow">SEND TO MICRO:BIT</button>
-                         </div>`;
             }
             else if (type === 'motor') {
                 let mStart = startVals && startVals[0] !== undefined ? Number(startVals[0]) : 0;
@@ -506,22 +422,26 @@
                          </div>`;
             } 
             else if (type === 'servo') {
-                html += `<div class="w-full flex-1 flex items-center justify-center">
-                             <div id="val-${id}" class="text-6xl font-mono text-blue-400 font-black tracking-tighter drop-shadow-lg">${startVals[0] || 90}°</div>
-                         </div>
-                         <div class="w-full mt-auto flex flex-col gap-4">
-                             <input type="range" id="slider-${id}" min="0" max="180" value="${startVals[0] || 90}" oninput="updateVal('${id}', this.value); sendBluetoothCommand('${id}:'+this.value+':SLIDER');" class="w-full">
-                             <div class="flex gap-3 w-full">
-                                 <div class="flex-1 flex flex-col gap-1">
-                                     <label class="text-[9px] text-slate-500 text-center font-bold">ANGLE</label>
-                                     <input type="number" id="pos1-val-${id}" value="${startVals[1] || 0}" readonly class="ui-editable-num w-full bg-slate-900 border border-slate-600 rounded px-1 py-1 text-center text-xs font-mono text-blue-400 shadow-inner mb-1">
-                                     <input type="text" id="btn-pos1-${id}" value="Pos 1" readonly onclick="if(!isEditMode) setServoPos('${id}', 1)" class="ui-btn-editable w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-1.5 px-1 rounded-lg shadow-lg border border-blue-700/50 cursor-pointer text-center focus:outline-none truncate">
-                                 </div>
-                                 <div class="flex-1 flex flex-col gap-1">
-                                     <label class="text-[9px] text-slate-500 text-center font-bold">ANGLE</label>
-                                     <input type="number" id="pos2-val-${id}" value="${startVals[2] || 180}" readonly class="ui-editable-num w-full bg-slate-900 border border-slate-600 rounded px-1 py-1 text-center text-xs font-mono text-blue-400 shadow-inner mb-1">
-                                     <input type="text" id="btn-pos2-${id}" value="Pos 2" readonly onclick="if(!isEditMode) setServoPos('${id}', 2)" class="ui-btn-editable w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-1.5 px-1 rounded-lg shadow-lg border border-blue-700/50 cursor-pointer text-center focus:outline-none truncate">
-                                 </div>
+                // UI DYNAMIC LIMITS APPLIED HERE!
+                let p1 = startVals[1] !== undefined ? parseInt(startVals[1]) : 0;
+                let p2 = startVals[2] !== undefined ? parseInt(startVals[2]) : 180;
+                let minBound = Math.min(p1, p2);
+                let maxBound = Math.max(p1, p2);
+                
+                let sVal = startVals[0] !== undefined ? parseInt(startVals[0]) : 90;
+                sVal = Math.max(minBound, Math.min(maxBound, sVal));
+                
+                html += `<div id="val-${id}" class="text-5xl font-mono text-blue-400 font-bold mb-4">${sVal}°</div><input type="range" id="slider-${id}" min="${minBound}" max="${maxBound}" value="${sVal}" oninput="updateVal('${id}', this.value); sendBluetoothCommand('${id}:'+this.value);" class="w-full mb-4 mt-auto">
+                         <div class="flex gap-3 w-full">
+                             <div class="flex-1 flex flex-col gap-1">
+                                 <label class="text-[9px] text-slate-500 text-center font-bold">ANGLE</label>
+                                 <input type="number" id="pos1-val-${id}" value="${p1}" readonly onchange="updateServoLimits('${id}')" class="ui-editable-num w-full bg-slate-900 border border-slate-600 rounded px-1 py-1 text-center text-xs font-mono text-blue-400 shadow-inner mb-1">
+                                 <input type="text" id="btn-pos1-${id}" value="Pos 1" readonly onclick="if(!isEditMode) setServoPos('${id}', 1)" class="ui-btn-editable w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-1.5 px-1 rounded-lg shadow-lg border border-blue-700/50 cursor-pointer text-center focus:outline-none truncate">
+                             </div>
+                             <div class="flex-1 flex flex-col gap-1">
+                                 <label class="text-[9px] text-slate-500 text-center font-bold">ANGLE</label>
+                                 <input type="number" id="pos2-val-${id}" value="${p2}" readonly onchange="updateServoLimits('${id}')" class="ui-editable-num w-full bg-slate-900 border border-slate-600 rounded px-1 py-1 text-center text-xs font-mono text-blue-400 shadow-inner mb-1">
+                                 <input type="text" id="btn-pos2-${id}" value="Pos 2" readonly onclick="if(!isEditMode) setServoPos('${id}', 2)" class="ui-btn-editable w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-1.5 px-1 rounded-lg shadow-lg border border-blue-700/50 cursor-pointer text-center focus:outline-none truncate">
                              </div>
                          </div>`;
             }
@@ -536,9 +456,8 @@
             }
             if (type === 'analog' && mode === 'OUT') updateAnalogOutUI(id, startVals ? startVals[0] : 0);
             if (type === 'digital') updateDigitalUI(id, startVals ? startVals[0] : 0);
-            if (type === 'led') updateLEDUI(id, advancedData[id] || 0);
 
-            applySavedLayout(); applyCustomLabels(); 
+            applySavedLayout(); applyCustomLabels(); saveLayoutOrder(); 
         }
 
         function initSensorChart(id) { const ctx = document.getElementById(`chart-${id}`).getContext('2d'); sensorCharts[id] = new Chart(ctx, { type: 'line', data: { labels: [], datasets: [{ data: [], borderColor: '#c084fc', tension: 0.2, pointRadius: 0, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } } }); }
@@ -549,8 +468,8 @@
         
         function setServoPos(id, posNum) { 
             let targetVal = parseInt(document.getElementById(`pos${posNum}-val-${id}`).value) || 0; 
-            if (targetVal > 180) targetVal = 180; if (targetVal < 0) targetVal = 0; 
             
+            // Slider bounds are safe because the input box itself updates the min/max via updateServoLimits!
             const slider = document.getElementById(`slider-${id}`); 
             if (slider) slider.value = targetVal; 
             updateVal(id, targetVal); 
@@ -624,20 +543,12 @@
                 let line = lines.shift().trim();
                 if (line.startsWith("LOG:")) { appendTerminal(line.substring(4)); } 
                 else if (line.startsWith("INIT:")) {
-                    let payload = line.substring(5);
-                    let parts = payload.split(",");
-                    let id = parts[0];
-                    
-                    if (id.startsWith("T")) {
-                        let textVal = payload.substring(id.length + parts[1].length + 2);
-                        createPlayingCard(id, 'text', parts[1], [textVal]);
-                    } else {
-                        if(id.startsWith("M")) createPlayingCard(id, 'motor', null, [parts[2], parts[3], parts[4]]);
-                        else if(id.startsWith("S")) createPlayingCard(id, 'servo', null, [parts[2], parts[3], parts[4]]);
-                        else if(id.startsWith("A")) createPlayingCard(id, 'analog', parts[1], [parts[2]]);
-                        else if(id.startsWith("D")) createPlayingCard(id, 'digital', parts[1], [parts[2]]);
-                        else if(id.startsWith("L")) createPlayingCard(id, 'led', null, [parts[2]]);
-                    }
+                    let params = line.substring(5).split(","); let id = params[0];
+                    if(id.startsWith("M")) createPlayingCard(id, 'motor', null, [params[2], params[3], params[4]]);
+                    else if(id.startsWith("S")) createPlayingCard(id, 'servo', null, [params[2], params[3], params[4]]);
+                    else if(id.startsWith("T")) createPlayingCard(id, 'text', null, [params[2]]);
+                    else if(id.startsWith("A")) createPlayingCard(id, 'analog', params[1], [params[2]]);
+                    else if(id.startsWith("D")) createPlayingCard(id, 'digital', params[1], [params[2]]);
                 } else if (line !== "") { parseTelemetry(line); }
             }
             rxBuffer = lines[0];
@@ -648,14 +559,7 @@
             let id = str.substring(0, splitIdx); let valStr = str.substring(splitIdx + 1);
             let cardData = activeCardTypes[id]; if (!cardData) return; advancedData[id] = valStr;
 
-            if (cardData.type === 'text') { 
-                if (cardData.mode === 'IN') {
-                    let el = document.getElementById(`val-${id}`); if(el) el.innerText = valStr; 
-                }
-            } 
-            else if (cardData.type === 'led') {
-                updateLEDUI(id, valStr);
-            }
+            if (cardData.type === 'text') { let el = document.getElementById(`val-${id}`); if(el) el.innerText = valStr; } 
             else {
                 let valNum = parseFloat(valStr) || 0;
                 if (cardData.type === 'analog' && cardData.mode === 'IN') { 
@@ -692,10 +596,7 @@
                 db.ref('rooms/' + cloudRoomId + '/command').on('child_added', (snap) => { 
                     const cmdData = snap.val(); 
                     if(cmdData && cmdData.cmd) { 
-                        if (cmdData.cmd === 'STOPALL') {
-                            triggerEStop(); 
-                        }
-                        else if (cmdData.cmd.includes(':POS1')) { setServoPos(cmdData.cmd.split(':')[0], 1); }
+                        if (cmdData.cmd.includes(':POS1')) { setServoPos(cmdData.cmd.split(':')[0], 1); }
                         else if (cmdData.cmd.includes(':POS2')) { setServoPos(cmdData.cmd.split(':')[0], 2); }
                         else {
                             sendBluetoothCommand(cmdData.cmd); 
@@ -713,11 +614,7 @@
         function syncCloud() {
             const payload = [];
             
-            db.ref('rooms/' + cloudRoomId + '/config').set({ 
-                terminalVisible: cardVisibility['terminal'] !== false,
-                estopVisible: cardVisibility['estop'] !== false
-            });
-            
+            db.ref('rooms/' + cloudRoomId + '/config').set({ terminalVisible: cardVisibility['terminal'] !== false });
             db.ref('rooms/' + cloudRoomId + '/heartbeat').set(Date.now());
 
             Array.from(gridEl.children).forEach(cardDom => {
@@ -730,11 +627,11 @@
                         id: String(id),
                         type: String(info.type),
                         mode: info.mode ? String(info.mode) : "",
-                        val: (info.type === 'text' || info.type === 'led') ? (advancedData[id] !== undefined ? String(advancedData[id]) : "") : (advancedData[id] != null && !Number.isNaN(Number(advancedData[id])) ? Number(advancedData[id]) : 0),
+                        val: info.type === 'text' ? (advancedData[id] !== undefined ? String(advancedData[id]) : "") : (advancedData[id] != null && !Number.isNaN(Number(advancedData[id])) ? Number(advancedData[id]) : 0),
                         title: document.getElementById(`title-${id}`)?.value || "Label"
                     };
                     
-                    let isOut = (info.type === 'analog' && info.mode === 'OUT') || (info.type === 'digital' && (info.mode === 'OUT' || info.mode === 'PUSH')) || (info.type === 'text' && info.mode === 'OUT') || info.type === 'motor' || info.type === 'servo' || info.type === 'led';
+                    let isOut = (info.type === 'analog' && info.mode === 'OUT') || (info.type === 'digital' && (info.mode === 'OUT' || info.mode === 'PUSH')) || info.type === 'motor' || info.type === 'servo';
                     if (isOut) { cardData.publicControl = cardPermissions[id] !== false; }
 
                     if (info.type === 'analog' && info.mode === 'IN') {
