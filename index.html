@@ -130,24 +130,41 @@
             saveLayoutOrder();
         }
 
-        // NEW: Function to dynamically update slider boundaries if user changes Pos1/Pos2 in edit mode
         function updateServoLimits(id) {
-            let p1 = parseInt(document.getElementById(`pos1-val-${id}`).value) || 0;
-            let p2 = parseInt(document.getElementById(`pos2-val-${id}`).value) || 180;
+            let p1El = document.getElementById(`pos1-val-${id}`);
+            let p2El = document.getElementById(`pos2-val-${id}`);
+            if(!p1El || !p2El) return;
+            
+            let p1 = parseInt(p1El.value) || 0;
+            let p2 = parseInt(p2El.value) || 180;
+            
+            let outOfBounds = false;
+            if(p1 < 0) { p1 = 0; outOfBounds = true; }
+            if(p1 > 180) { p1 = 180; outOfBounds = true; }
+            if(p2 < 0) { p2 = 0; outOfBounds = true; }
+            if(p2 > 180) { p2 = 180; outOfBounds = true; }
+
+            if(outOfBounds) {
+                showMsg(`⚠️ Servo limits must be between 0° and 180°`);
+                p1El.value = p1;
+                p2El.value = p2;
+            }
+
             let sl = document.getElementById(`slider-${id}`);
             if(sl) {
                 sl.min = Math.min(p1, p2);
                 sl.max = Math.max(p1, p2);
                 
-                // If the current value is outside the new bounds, safely push it back in!
                 let cVal = parseInt(sl.value);
                 let bounded = Math.max(sl.min, Math.min(sl.max, cVal));
                 if(cVal !== bounded) {
                     sl.value = bounded;
                     updateVal(id, bounded);
                     sendBluetoothCommand(`${id}:${bounded}`);
+                    showMsg(`⚠️ Angle clamped to ${bounded}° (Hardware Limit)`);
                 }
             }
+            if(isCloudActive) syncCloud();
         }
 
         function pingBluetooth() {
@@ -300,7 +317,27 @@
         }
 
         function createPlayingCard(id, type, mode, startVals) {
-            if(document.getElementById(`card-${id}`)) return; 
+            
+            // FIX: If card already exists, update its limits from MakeCode sync instead of ignoring it!
+            if(document.getElementById(`card-${id}`)) {
+                if (type === 'servo' && startVals) {
+                    let p1El = document.getElementById(`pos1-val-${id}`);
+                    let p2El = document.getElementById(`pos2-val-${id}`);
+                    if(p1El && p2El) {
+                        p1El.value = startVals[1] !== undefined ? parseInt(startVals[1]) : 0;
+                        p2El.value = startVals[2] !== undefined ? parseInt(startVals[2]) : 180;
+                        updateServoLimits(id); // Force slider boundaries to update
+                    }
+                } else if (type === 'motor' && startVals) {
+                    let cwEl = document.getElementById(`cw-spd-${id}`);
+                    let ccwEl = document.getElementById(`ccw-spd-${id}`);
+                    if(cwEl && ccwEl) {
+                        cwEl.value = startVals[1] !== undefined ? parseInt(startVals[1]) : 255;
+                        ccwEl.value = startVals[2] !== undefined ? parseInt(startVals[2]) : 255;
+                    }
+                }
+                return; 
+            }
             
             if(cardPermissions[id] === undefined) {
                 let savedPerms = JSON.parse(localStorage.getItem('makerlink_perms') || '{}');
@@ -422,7 +459,6 @@
                          </div>`;
             } 
             else if (type === 'servo') {
-                // UI DYNAMIC LIMITS APPLIED HERE!
                 let p1 = startVals[1] !== undefined ? parseInt(startVals[1]) : 0;
                 let p2 = startVals[2] !== undefined ? parseInt(startVals[2]) : 180;
                 let minBound = Math.min(p1, p2);
@@ -468,8 +504,6 @@
         
         function setServoPos(id, posNum) { 
             let targetVal = parseInt(document.getElementById(`pos${posNum}-val-${id}`).value) || 0; 
-            
-            // Slider bounds are safe because the input box itself updates the min/max via updateServoLimits!
             const slider = document.getElementById(`slider-${id}`); 
             if (slider) slider.value = targetVal; 
             updateVal(id, targetVal); 
@@ -582,7 +616,22 @@
                         el.innerText = displayStr; 
                     } 
                 }
-                else if (cardData.type === 'servo') { let el = document.getElementById(`slider-${id}`); if(el) el.value = valNum; let valEl = document.getElementById(`val-${id}`); if(valEl) valEl.innerText = valNum + '°'; }
+                else if (cardData.type === 'servo') { 
+                    let el = document.getElementById(`slider-${id}`); 
+                    if(el) { 
+                        let minB = parseInt(el.min);
+                        let maxB = parseInt(el.max);
+                        
+                        // FIX: Notify user if MakeCode attempts to send a telemetry value outside safe limits!
+                        if (valNum < minB || valNum > maxB) {
+                            showMsg(`⚠️ ${id} clamped to ${minB}° - ${maxB}° (Hardware Limit)`);
+                            valNum = Math.max(minB, Math.min(maxB, valNum));
+                        }
+                        el.value = valNum; 
+                    } 
+                    let valEl = document.getElementById(`val-${id}`); 
+                    if(valEl) valEl.innerText = valNum + '°'; 
+                }
             }
         }
 
