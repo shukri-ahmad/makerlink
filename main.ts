@@ -25,6 +25,10 @@ namespace makerlink {
     let servoDelay = [0, 0, 0, 0, 0, 0, 0, 0]; 
     let servoLast = [0, 0, 0, 0, 0, 0, 0, 0]; 
     
+    // Safety Limits
+    let servoMin = [0, 0, 0, 0, 0, 0, 0, 0];
+    let servoMax = [180, 180, 180, 180, 180, 180, 180, 180];
+    
     let analogVals = [0, 0, 0, 0, 0, 0, 0, 0];
     let digitalVals = [0, 0, 0, 0, 0, 0, 0, 0];
 
@@ -77,8 +81,10 @@ namespace makerlink {
         } else if (id.charAt(0) == 'S') {
             let idx = parseInt(id.charAt(1)) - 1;
             if (idx >= 0 && idx <= 7) {
-                servoVals[idx] = val; 
-                servoDelay[idx] = 0; // UI commands always snap instantly
+                // HARDWARE SAFETY LIMITS ENFORCED HERE
+                let boundedVal = Math.max(servoMin[idx], Math.min(servoMax[idx], val));
+                servoVals[idx] = boundedVal; 
+                servoDelay[idx] = 0; 
             }
         } else if (id.charAt(0) == 'A') {
             let idx = parseInt(id.charAt(1)) - 1;
@@ -176,17 +182,29 @@ namespace makerlink {
     /**
      * Initialize a Servo Card
      */
-    //% block="🦾 Init Servo Card $servo | Start Angle $start | Pos 1 $pos1 | Pos 2 $pos2"
-    //% start.defl=90 pos1.defl=0 pos2.defl=180
+    //% block="🦾 Init Servo Card $servo | Start Angle $start | Startup Delay(ms) $delay | Pos 1 $pos1 | Pos 2 $pos2"
+    //% start.defl=90 delay.defl=15 pos1.defl=0 pos2.defl=180
     //% group="Setup (On Start)"
     //% weight=89
-    export function initServo(servo: ServoID, start: number, pos1: number, pos2: number): void {
-        let safeStart = Math.max(0, Math.min(180, start));
-        servoVals[servo] = safeStart;
-        servoCurrent[servo] = safeStart;
-        servoDelay[servo] = 0;
+    export function initServo(servo: ServoID, start: number, delay: number, pos1: number, pos2: number): void {
         
-        applyServoPhysical(servo, safeStart); 
+        // Define limits based on Pos 1 and Pos 2
+        servoMin[servo] = Math.min(pos1, pos2);
+        servoMax[servo] = Math.max(pos1, pos2);
+        
+        // Force Start Angle to obey the limits
+        let safeStart = Math.max(servoMin[servo], Math.min(servoMax[servo], start));
+        
+        servoVals[servo] = safeStart;
+        servoDelay[servo] = Math.max(0, delay);
+        
+        if (servoDelay[servo] > 0) {
+            servoCurrent[servo] = servoMin[servo]; // Sweep up safely from minimum allowed position
+            applyServoPhysical(servo, servoMin[servo]); 
+        } else {
+            servoCurrent[servo] = safeStart;
+            applyServoPhysical(servo, safeStart); 
+        }
 
         let cmd = "INIT:" + getServoStr(servo) + ",SERVO," + safeStart + "," + pos1 + "," + pos2;
         saveInitCmd(cmd);
@@ -273,11 +291,11 @@ namespace makerlink {
     //% block="MakerLink set servo $servo to $angle degrees || with delay $delay ms"
     //% group="Write (Actions)"
     //% expandableArgumentMode="toggle"
-    //% angle.min=0 angle.max=180
     //% delay.defl=0
     //% weight=79
     export function setServo(servo: ServoID, angle: number, delay: number = 0): void {
-        let val = Math.max(0, Math.min(180, angle));
+        // strictly enforce safety limits for autonomous logic
+        let val = Math.max(servoMin[servo], Math.min(servoMax[servo], angle));
         servoVals[servo] = val; 
         servoDelay[servo] = Math.max(0, delay); 
     }
