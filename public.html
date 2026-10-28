@@ -339,16 +339,27 @@
                                      <button id="btn-stop-${card.id}" onclick="sendMotorRemoteCommand('${card.id}', 'stop')" class="w-full bg-red-600 hover:bg-red-500 text-white text-sm font-bold py-2 px-1 rounded-lg shadow-lg truncate">${card.btnStop || "⏹️ STOP"}</button>
                                  </div>`;
                     } else if (card.type === 'servo') {
-                        html += `<div id="val-${card.id}" class="text-5xl font-mono text-blue-400 font-bold mb-8 mt-auto">${card.val !== undefined ? card.val : 90}°</div>
+                        let p1 = card.pos1Val !== undefined ? parseInt(card.pos1Val) : 0;
+                        let p2 = card.pos2Val !== undefined ? parseInt(card.pos2Val) : 180;
+                        let minBound = Math.min(p1, p2);
+                        let maxBound = Math.max(p1, p2);
+                        
+                        let sVal = card.val !== undefined ? parseInt(card.val) : 90;
+                        let isLimit = sVal <= minBound || sVal >= maxBound;
+                        sVal = Math.max(minBound, Math.min(maxBound, sVal));
+                        
+                        let colorStyle = isLimit ? 'color: #ef4444; text-shadow: 0px 0px 8px rgba(239, 68, 68, 0.8);' : 'color: #60a5fa; text-shadow: none;';
+                        
+                        html += `<div id="val-${card.id}" class="text-5xl font-mono font-bold mb-8 mt-auto transition-colors" style="${colorStyle}">${sVal}°</div>
                                  <div class="flex gap-3 w-full">
                                      <div class="flex-1 flex flex-col gap-1">
                                          <label class="text-[9px] text-slate-500 text-center font-bold">ANGLE</label>
-                                         <div class="w-full bg-slate-900 border border-slate-600 rounded px-1 py-1 text-center text-xs font-mono text-blue-400 shadow-inner" id="pos1-val-display-${card.id}">${card.pos1Val !== undefined ? card.pos1Val : 0}</div>
+                                         <div class="w-full bg-slate-900 border border-slate-600 rounded px-1 py-1 text-center text-xs font-mono text-blue-400 shadow-inner" id="pos1-val-display-${card.id}">${p1}</div>
                                          <button id="btn-pos1-${card.id}" onclick="sendRemoteCommand('${card.id}:POS1')" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-1.5 px-1 rounded-lg shadow-lg border border-blue-700/50 truncate mt-1">${card.btnPos1 || 'Pos 1'}</button>
                                      </div>
                                      <div class="flex-1 flex flex-col gap-1">
                                          <label class="text-[9px] text-slate-500 text-center font-bold">ANGLE</label>
-                                         <div class="w-full bg-slate-900 border border-slate-600 rounded px-1 py-1 text-center text-xs font-mono text-blue-400 shadow-inner" id="pos2-val-display-${card.id}">${card.pos2Val !== undefined ? card.pos2Val : 180}</div>
+                                         <div class="w-full bg-slate-900 border border-slate-600 rounded px-1 py-1 text-center text-xs font-mono text-blue-400 shadow-inner" id="pos2-val-display-${card.id}">${p2}</div>
                                          <button id="btn-pos2-${card.id}" onclick="sendRemoteCommand('${card.id}:POS2')" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-1.5 px-1 rounded-lg shadow-lg border border-blue-700/50 truncate mt-1">${card.btnPos2 || 'Pos 2'}</button>
                                      </div>
                                  </div>`;
@@ -377,17 +388,30 @@
                     let d1 = document.getElementById(`pos1-val-display-${card.id}`); if(d1) d1.innerText = card.pos1Val !== undefined ? card.pos1Val : 0;
                     let d2 = document.getElementById(`pos2-val-display-${card.id}`); if(d2) d2.innerText = card.pos2Val !== undefined ? card.pos2Val : 180;
                     
-                    // FIX: Notify user if host telemetry clamped this value in the cloud
                     let valNum = parseFloat(card.val) || 0;
                     let minB = Math.min(card.pos1Val || 0, card.pos2Val || 180);
                     let maxB = Math.max(card.pos1Val || 0, card.pos2Val || 180);
                     
-                    if (valNum < minB || valNum > maxB) {
-                        showMsg(`⚠️ ${card.id} clamped to ${minB}° - ${maxB}° (Hardware Limit)`);
+                    let isLimit = false;
+                    if (valNum <= minB || valNum >= maxB) {
+                        if (valNum < minB || valNum > maxB) {
+                            showMsg(`⚠️ ${card.id} clamped to ${minB}° - ${maxB}° (Hardware Limit)`);
+                        }
                         valNum = Math.max(minB, Math.min(maxB, valNum));
+                        isLimit = true;
                     }
+                    
                     let vl = document.getElementById(`val-${card.id}`); 
-                    if(vl) vl.innerText = valNum + '°'; 
+                    if(vl) {
+                        vl.innerText = valNum + '°'; 
+                        if(isLimit) {
+                            vl.style.color = '#ef4444';
+                            vl.style.textShadow = '0px 0px 8px rgba(239, 68, 68, 0.8)';
+                        } else {
+                            vl.style.color = '#60a5fa';
+                            vl.style.textShadow = 'none';
+                        }
+                    }
                 }
 
                 if (isOutput) {
@@ -421,7 +445,7 @@
                 }
 
                 if (card.type === 'text') { let el = document.getElementById(`val-${card.id}`); if(el) el.innerText = card.val; } 
-                else if (card.type !== 'servo') { // Servo already handled above for limits
+                else if (card.type !== 'servo') { 
                     let valNum = parseFloat(card.val) || 0;
                     if (card.type === 'analog' && card.mode === 'IN') {
                         let el = document.getElementById(`val-${card.id}`); 
