@@ -345,12 +345,9 @@
                         let maxBound = Math.max(p1, p2);
                         
                         let sVal = card.val !== undefined ? parseInt(card.val) : 90;
-                        let isLimit = sVal <= minBound || sVal >= maxBound;
                         sVal = Math.max(minBound, Math.min(maxBound, sVal));
                         
-                        let colorStyle = isLimit ? 'color: #ef4444; text-shadow: 0px 0px 8px rgba(239, 68, 68, 0.8);' : 'color: #60a5fa; text-shadow: none;';
-                        
-                        html += `<div id="val-${card.id}" class="text-5xl font-mono font-bold mb-8 mt-auto transition-colors" style="${colorStyle}">${sVal}°</div>
+                        html += `<div id="val-${card.id}" class="text-5xl font-mono text-blue-400 font-bold mb-8 mt-auto">${sVal}°</div>
                                  <div class="flex gap-3 w-full">
                                      <div class="flex-1 flex flex-col gap-1">
                                          <label class="text-[9px] text-slate-500 text-center font-bold">ANGLE</label>
@@ -392,25 +389,11 @@
                     let minB = Math.min(card.pos1Val || 0, card.pos2Val || 180);
                     let maxB = Math.max(card.pos1Val || 0, card.pos2Val || 180);
                     
-                    let isLimit = false;
-                    if (valNum <= minB || valNum >= maxB) {
-                        if (valNum < minB || valNum > maxB) {
-                            showMsg(`⚠️ ${card.id} clamped to ${minB}° - ${maxB}° (Hardware Limit)`);
-                        }
-                        valNum = Math.max(minB, Math.min(maxB, valNum));
-                        isLimit = true;
-                    }
+                    valNum = Math.max(minB, Math.min(maxBound, valNum));
                     
                     let vl = document.getElementById(`val-${card.id}`); 
                     if(vl) {
                         vl.innerText = valNum + '°'; 
-                        if(isLimit) {
-                            vl.style.color = '#ef4444';
-                            vl.style.textShadow = '0px 0px 8px rgba(239, 68, 68, 0.8)';
-                        } else {
-                            vl.style.color = '#60a5fa';
-                            vl.style.textShadow = 'none';
-                        }
                     }
                 }
 
