@@ -7,10 +7,7 @@ namespace makerlink {
     // ==============================================
     export enum MotorID { M1, M2, M3, M4 }
     export enum ServoID { S1, S2, S3, S4, S5, S6, S7, S8 }
-    
-    export enum MLPinMode { IN, OUT, PUSH } 
-    export enum MLDataMode { IN, OUT } 
-
+    export enum MLPinMode { IN, OUT, PUSH }
     export enum MLAnalogStream { A1, A2, A3, A4, A5, A6, A7, A8 }
     export enum MLDigitalStream { D1, D2, D3, D4, D5, D6, D7, D8 }
     export enum MLTextStream { T1, T2, T3, T4 }
@@ -22,19 +19,14 @@ namespace makerlink {
     let isInitialized = false;
 
     let motorVals = [0, 0, 0, 0];
+    
     let servoVals = [90, 90, 90, 90, 90, 90, 90, 90]; 
     let servoCurrent = [90, 90, 90, 90, 90, 90, 90, 90]; 
     let servoDelay = [0, 0, 0, 0, 0, 0, 0, 0]; 
-    let servoActiveDelay = [0, 0, 0, 0, 0, 0, 0, 0]; // Tracks real-time vs button delay
     let servoLast = [0, 0, 0, 0, 0, 0, 0, 0]; 
     
     let analogVals = [0, 0, 0, 0, 0, 0, 0, 0];
     let digitalVals = [0, 0, 0, 0, 0, 0, 0, 0];
-    
-    let textVals = ["", "", "", ""];
-    let textNewFlag = [false, false, false, false]; 
-    
-    let ledVal = 0; 
 
     // ==============================================
     // UTILITIES
@@ -74,29 +66,10 @@ namespace makerlink {
     }
 
     function parseCommand(cmd: string) {
-        if (cmd === "STOPALL") {
-            motorVals = [0, 0, 0, 0];
-            motionbit.runMotor(MotionBitMotorChannel.M1, MotionBitMotorDirection.Forward, 0);
-            motionbit.runMotor(MotionBitMotorChannel.M2, MotionBitMotorDirection.Forward, 0);
-            motionbit.runMotor(MotionBitMotorChannel.M3, MotionBitMotorDirection.Forward, 0);
-            motionbit.runMotor(MotionBitMotorChannel.M4, MotionBitMotorDirection.Forward, 0);
-            
-            for(let i = 0; i < 8; i++) {
-                servoVals[i] = servoCurrent[i]; 
-            }
-            
-            ledVal = 0;
-            basic.clearScreen();
-            
-            return;
-        }
-
-        let splitIdx = cmd.indexOf(':');
-        if (splitIdx === -1) return;
-        
-        let id = cmd.substr(0, splitIdx);
-        let valStr = cmd.substr(splitIdx + 1);
-        let val = parseInt(valStr);
+        let parts = cmd.split(':');
+        if (parts.length < 2) return;
+        let id = parts[0];
+        let val = parseInt(parts[1]);
 
         if (id.charAt(0) == 'M') {
             let idx = parseInt(id.charAt(1)) - 1;
@@ -105,17 +78,7 @@ namespace makerlink {
             let idx = parseInt(id.charAt(1)) - 1;
             if (idx >= 0 && idx <= 7) {
                 servoVals[idx] = val; 
-                let parts = valStr.split(':');
-                if (parts.length >= 2 && parts[1] === "SLIDER") {
-                    // Instantly follow the finger without lag!
-                    servoActiveDelay[idx] = 0;
-                } else if (parts.length >= 2) {
-                    servoDelay[idx] = Math.max(0, parseInt(parts[1]));
-                    servoActiveDelay[idx] = servoDelay[idx];
-                } else {
-                    // Revert back to the configured MakeCode block delay for buttons!
-                    servoActiveDelay[idx] = servoDelay[idx];
-                }
+                servoDelay[idx] = 0; // UI commands always snap instantly
             }
         } else if (id.charAt(0) == 'A') {
             let idx = parseInt(id.charAt(1)) - 1;
@@ -123,26 +86,6 @@ namespace makerlink {
         } else if (id.charAt(0) == 'D') {
             let idx = parseInt(id.charAt(1)) - 1;
             if (idx >= 0 && idx <= 7) digitalVals[idx] = val;
-        } else if (id.charAt(0) == 'T') {
-            let idx = parseInt(id.charAt(1)) - 1;
-            if (idx >= 0 && idx <= 3) {
-                textVals[idx] = valStr;
-                textNewFlag[idx] = true; 
-            }
-        } else if (id.charAt(0) == 'L') {
-            let num = parseInt(valStr);
-            ledVal = num;
-            control.inBackground(function() {
-                for(let i = 0; i < 25; i++) {
-                    let x = i % 5;
-                    let y = Math.floor(i / 5);
-                    if ((num & (1 << i)) !== 0) {
-                        led.plot(x, y);
-                    } else {
-                        led.unplot(x, y);
-                    }
-                }
-            });
         }
     }
 
@@ -150,6 +93,9 @@ namespace makerlink {
     // SETUP BLOCKS (on start)
     // ==============================================
 
+   /**
+     * Initializes MakerLink Bluetooth and listens for the Web App SYNC handshake.
+     */
     //% block="📡 MakerLink: Initialize"
     //% group="Setup (On Start)"
     //% weight=100
@@ -162,11 +108,11 @@ namespace makerlink {
                 let now = control.millis();
                 for (let i = 0; i < 8; i++) {
                     if (servoCurrent[i] !== servoVals[i]) {
-                        if (servoActiveDelay[i] <= 0) {
+                        if (servoDelay[i] <= 0) {
                             servoCurrent[i] = servoVals[i]; 
                             applyServoPhysical(i, servoCurrent[i]);
                         } else {
-                            if (now - servoLast[i] >= servoActiveDelay[i]) {
+                            if (now - servoLast[i] >= servoDelay[i]) {
                                 servoLast[i] = now;
                                 if (servoCurrent[i] < servoVals[i]) servoCurrent[i]++;
                                 else servoCurrent[i]--;
@@ -192,38 +138,20 @@ namespace makerlink {
                     let parts = initCommands[i].split(":");
                     if (parts.length >= 2) {
                         let id = parts[1].split(",")[0];
-                        let valStrOut = "";
+                        let val = 0;
                         let valid = false;
                         
-                        if (id.charAt(0) == 'M') { valStrOut = motorVals[parseInt(id.charAt(1)) - 1].toString(); valid = true; }
-                        else if (id.charAt(0) == 'S') { valStrOut = servoVals[parseInt(id.charAt(1)) - 1].toString(); valid = true; }
-                        else if (id.charAt(0) == 'A') { valStrOut = analogVals[parseInt(id.charAt(1)) - 1].toString(); valid = true; }
-                        else if (id.charAt(0) == 'D') { valStrOut = digitalVals[parseInt(id.charAt(1)) - 1].toString(); valid = true; }
-                        else if (id.charAt(0) == 'T') { valStrOut = textVals[parseInt(id.charAt(1)) - 1]; valid = true; }
-                        else if (id.charAt(0) == 'L') { valStrOut = ledVal.toString(); valid = true; }
+                        if (id.charAt(0) == 'M') { val = motorVals[parseInt(id.charAt(1)) - 1]; valid = true; }
+                        else if (id.charAt(0) == 'S') { val = servoVals[parseInt(id.charAt(1)) - 1]; valid = true; }
+                        else if (id.charAt(0) == 'A') { val = analogVals[parseInt(id.charAt(1)) - 1]; valid = true; }
+                        else if (id.charAt(0) == 'D') { val = digitalVals[parseInt(id.charAt(1)) - 1]; valid = true; }
                         
                         if (valid) {
-                            bluetooth.uartWriteString(id + ":" + valStrOut + "\n");
+                            bluetooth.uartWriteString(id + ":" + val + "\n");
                             basic.pause(30);
                         }
                     }
                 }
-
-                control.inBackground(function() {
-                    for(let i=0; i<4; i++) {
-                        if (textVals[i] && textVals[i].length > 0) {
-                            basic.showString(textVals[i]);
-                            basic.clearScreen();
-                        }
-                    }
-                    for(let j = 0; j < 25; j++) {
-                        let x = j % 5;
-                        let y = Math.floor(j / 5);
-                        if ((ledVal & (1 << j)) !== 0) led.plot(x, y);
-                        else led.unplot(x, y);
-                    }
-                });
-
             } else {
                 parseCommand(cmd);
             }
@@ -231,6 +159,9 @@ namespace makerlink {
         isInitialized = true;
     }
 
+    /**
+     * Initialize a DC Motor Card
+     */
     //% block="⚙️ Init Motor Card $motor | Start $startVal | CW Limit $cw | CCW Limit $ccw"
     //% startVal.defl=0 cw.defl=255 ccw.defl=255
     //% group="Setup (On Start)"
@@ -242,37 +173,46 @@ namespace makerlink {
         bluetooth.uartWriteString(cmd + "\n");
     }
 
+    /**
+     * Initialize a Servo Card
+     */
     //% block="🦾 Init Servo Card $servo | Start Angle $start | Pos 1 $pos1 | Pos 2 $pos2"
     //% start.defl=90 pos1.defl=0 pos2.defl=180
     //% group="Setup (On Start)"
     //% weight=89
     export function initServo(servo: ServoID, start: number, pos1: number, pos2: number): void {
-        servoVals[servo] = start;
-        servoCurrent[servo] = start;
+        let safeStart = Math.max(0, Math.min(180, start));
+        servoVals[servo] = safeStart;
+        servoCurrent[servo] = safeStart;
         servoDelay[servo] = 0;
-        servoActiveDelay[servo] = 0;
         
-        applyServoPhysical(servo, start); 
+        applyServoPhysical(servo, safeStart); 
 
-        let cmd = "INIT:" + getServoStr(servo) + ",SERVO," + start + "," + pos1 + "," + pos2;
+        let cmd = "INIT:" + getServoStr(servo) + ",SERVO," + safeStart + "," + pos1 + "," + pos2;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
     }
 
+    /**
+     * Initialize an Analog Data Stream
+     */
     //% block="📊 Init Analog Stream $stream | Mode $mode | Initial Val $val"
     //% val.defl=0
     //% group="Setup (On Start)"
     //% weight=88
-    export function initAnalog(stream: MLAnalogStream, mode: MLDataMode, val: number): void {
-        if (mode == MLDataMode.OUT) { writeAnalog(stream, val); } 
+    export function initAnalog(stream: MLAnalogStream, mode: MLPinMode, val: number): void {
+        if (mode == MLPinMode.OUT || mode == MLPinMode.PUSH) { writeAnalog(stream, val); } 
         else { analogVals[stream] = val; }
         
-        let mStr = (mode == MLDataMode.IN) ? "IN" : "OUT";
+        let mStr = (mode == MLPinMode.IN) ? "IN" : "OUT";
         let cmd = "INIT:" + getAnalogStr(stream) + "," + mStr + "," + val;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
     }
 
+    /**
+     * Initialize a Digital Data Stream
+     */
     //% block="🚥 Init Digital Stream $stream | Mode $mode | Initial Val $val"
     //% val.defl=0
     //% group="Setup (On Start)"
@@ -290,32 +230,25 @@ namespace makerlink {
         bluetooth.uartWriteString(cmd + "\n");
     }
 
-    //% block="📝 Init Text Stream $stream | Mode $mode | Initial Text $val"
+    /**
+     * Initialize a Text Data Stream
+     */
+    //% block="📝 Init Text Stream $stream | Initial Text $val"
     //% group="Setup (On Start)"
     //% weight=86
-    export function initText(stream: MLTextStream, mode: MLDataMode, val: string): void {
-        textVals[stream] = val; 
-        let mStr = (mode == MLDataMode.IN) ? "IN" : "OUT"; 
-        let cmd = "INIT:" + getTextStr(stream) + "," + mStr + "," + val;
+    export function initText(stream: MLTextStream, val: string): void {
+        let cmd = "INIT:" + getTextStr(stream) + ",TEXT," + val;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
-    }
-
-    //% block="🔲 Init LED Matrix Card"
-    //% group="Setup (On Start)"
-    //% weight=85
-    export function initLEDMatrix(): void {
-        ledVal = 0; 
-        let cmd = "INIT:L1,LED,0";
-        saveInitCmd(cmd);
-        bluetooth.uartWriteString(cmd + "\n");
-        basic.clearScreen();
     }
 
     // ==============================================
     // ACTION BLOCKS (AUTO-CONTROL)
     // ==============================================
 
+    /**
+     * Runs the motor (-255 to 255)
+     */
     //% block="MakerLink run motor $motor at speed $speed"
     //% group="Write (Actions)"
     //% speed.min=-255 speed.max=255
@@ -334,6 +267,9 @@ namespace makerlink {
         else motionbit.runMotor(mbMotor, MotionBitMotorDirection.Forward, 0);
     }
 
+    /**
+     * Sets the servo angle smoothly in hardware. 
+     */
     //% block="MakerLink set servo $servo to $angle degrees || with delay $delay ms"
     //% group="Write (Actions)"
     //% expandableArgumentMode="toggle"
@@ -344,9 +280,11 @@ namespace makerlink {
         let val = Math.max(0, Math.min(180, angle));
         servoVals[servo] = val; 
         servoDelay[servo] = Math.max(0, delay); 
-        servoActiveDelay[servo] = servoDelay[servo]; // Updates active memory
     }
 
+    /**
+     * Physical Analog write mapping (0 to 1023)
+     */
     //% block="MakerLink write analog stream $stream to $val"
     //% group="Write (Actions)"
     //% val.min=0 val.max=1023
@@ -361,6 +299,9 @@ namespace makerlink {
         pins.analogWritePin(ap, v);
     }
 
+    /**
+     * Physical Digital write mapping (0 or 1)
+     */
     //% block="MakerLink write digital stream $stream to $val"
     //% group="Write (Actions)"
     //% val.min=0 val.max=1
@@ -391,47 +332,44 @@ namespace makerlink {
     // ==============================================
 
     /**
-     * Checks if a NEW message just arrived from the dashboard!
-     * (Reading this block automatically clears it back to false).
+     * Read the latest Motor value received from the Web App
      */
-    //% block="MakerLink Text Stream $stream has new message?"
-    //% group="Read (Variables)"
-    //% weight=71
-    export function hasNewText(stream: MLTextStream): boolean { 
-        let isNew = textNewFlag[stream];
-        textNewFlag[stream] = false; 
-        return isNew; 
-    }
-
     //% block="MakerLink Motor $motor value"
     //% group="Read (Variables)"
     //% weight=70
     export function getMotorValue(motor: MotorID): number { return motorVals[motor]; }
 
+    /**
+     * Read the latest Target Servo angle received from the Web App
+     */
     //% block="MakerLink Servo $servo value"
     //% group="Read (Variables)"
     //% weight=69
     export function getServoValue(servo: ServoID): number { return servoVals[servo]; }
 
+    /**
+     * Read the latest Analog Stream value received from the Web App
+     */
     //% block="MakerLink Analog Stream $stream value"
     //% group="Read (Variables)"
     //% weight=68
     export function getAnalogValue(stream: MLAnalogStream): number { return analogVals[stream]; }
 
+    /**
+     * Read the latest Digital Stream state received from the Web App
+     */
     //% block="MakerLink Digital Stream $stream value"
     //% group="Read (Variables)"
     //% weight=67
     export function getDigitalValue(stream: MLDigitalStream): number { return digitalVals[stream]; }
 
-    //% block="MakerLink Text Stream $stream value"
-    //% group="Read (Variables)"
-    //% weight=66
-    export function getTextValue(stream: MLTextStream): string { return textVals[stream]; }
-
     // ==============================================
     // SEND BLOCKS (UPDATE DASHBOARD)
     // ==============================================
 
+    /**
+     * Send Analog Stream data to update the Web App Chart
+     */
     //% block="📤 Update Dashboard Analog Stream $stream to $val"
     //% group="Send (Update Dashboard)"
     //% weight=60
@@ -439,6 +377,9 @@ namespace makerlink {
         bluetooth.uartWriteString(getAnalogStr(stream) + ":" + val + "\n");
     }
 
+    /**
+     * Send Digital Stream data to update the Web App State
+     */
     //% block="📤 Update Dashboard Digital Stream $stream to $val"
     //% group="Send (Update Dashboard)"
     //% weight=59
@@ -446,6 +387,9 @@ namespace makerlink {
         bluetooth.uartWriteString(getDigitalStr(stream) + ":" + val + "\n");
     }
 
+    /**
+     * Send Text data to update the Web App Text Display
+     */
     //% block="📤 Update Dashboard Text Stream $stream to $val"
     //% group="Send (Update Dashboard)"
     //% weight=58
@@ -453,6 +397,9 @@ namespace makerlink {
         bluetooth.uartWriteString(getTextStr(stream) + ":" + val + "\n");
     }
 
+    /**
+     * Override the Web App Motor slider position
+     */
     //% block="📤 Update Dashboard Motor $motor to $val"
     //% group="Send (Update Dashboard)"
     //% weight=57
@@ -460,6 +407,9 @@ namespace makerlink {
         bluetooth.uartWriteString(getMotorStr(motor) + ":" + val + "\n");
     }
 
+    /**
+     * Override the Web App Servo angle text
+     */
     //% block="📤 Update Dashboard Servo $servo to $val"
     //% group="Send (Update Dashboard)"
     //% weight=56
@@ -467,6 +417,10 @@ namespace makerlink {
         bluetooth.uartWriteString(getServoStr(servo) + ":" + val + "\n");
     }
 
+    /**
+     * Sends a custom text log to the Web Dashboard Terminal.
+     * @param msg The message to send
+     */
     //% block="📤 Update Dashboard Terminal $msg"
     //% group="Communication & Telemetry"
     //% weight=70
