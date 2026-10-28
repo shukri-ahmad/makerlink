@@ -177,6 +177,7 @@ namespace makerlink {
         let cmd = "INIT:" + getMotorStr(motor) + ",MOTOR," + startVal + "," + cw + "," + ccw;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
+        basic.pause(30); // Prevent Bluetooth Dropping
     }
 
     /**
@@ -188,18 +189,15 @@ namespace makerlink {
     //% weight=89
     export function initServo(servo: ServoID, start: number, delay: number, pos1: number, pos2: number): void {
         
-        // Define limits based on Pos 1 and Pos 2
         servoMin[servo] = Math.min(pos1, pos2);
         servoMax[servo] = Math.max(pos1, pos2);
-        
-        // Force Start Angle to obey the limits
         let safeStart = Math.max(servoMin[servo], Math.min(servoMax[servo], start));
         
         servoVals[servo] = safeStart;
         servoDelay[servo] = Math.max(0, delay);
         
         if (servoDelay[servo] > 0) {
-            servoCurrent[servo] = servoMin[servo]; // Sweep up safely from minimum allowed position
+            servoCurrent[servo] = servoMin[servo]; 
             applyServoPhysical(servo, servoMin[servo]); 
         } else {
             servoCurrent[servo] = safeStart;
@@ -209,6 +207,7 @@ namespace makerlink {
         let cmd = "INIT:" + getServoStr(servo) + ",SERVO," + safeStart + "," + pos1 + "," + pos2;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
+        basic.pause(30); // Prevent Bluetooth Dropping
     }
 
     /**
@@ -226,6 +225,7 @@ namespace makerlink {
         let cmd = "INIT:" + getAnalogStr(stream) + "," + mStr + "," + val;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
+        basic.pause(30); // Prevent Bluetooth Dropping
     }
 
     /**
@@ -246,6 +246,7 @@ namespace makerlink {
         let cmd = "INIT:" + getDigitalStr(stream) + "," + mStr + "," + val;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
+        basic.pause(30); // Prevent Bluetooth Dropping
     }
 
     /**
@@ -258,6 +259,7 @@ namespace makerlink {
         let cmd = "INIT:" + getTextStr(stream) + ",TEXT," + val;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
+        basic.pause(30); // Prevent Bluetooth Dropping
     }
 
     // ==============================================
@@ -294,7 +296,6 @@ namespace makerlink {
     //% delay.defl=0
     //% weight=79
     export function setServo(servo: ServoID, angle: number, delay: number = 0): void {
-        // strictly enforce safety limits for autonomous logic
         let val = Math.max(servoMin[servo], Math.min(servoMax[servo], angle));
         servoVals[servo] = val; 
         servoDelay[servo] = Math.max(0, delay); 
