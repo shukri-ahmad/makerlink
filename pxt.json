@@ -1,6 +1,6 @@
 {
     "name": "MakerLink-Robotics",
-    "version": "1.2.2",
+    "version": "1.2.3",
     "description": "Bi-directional Web Dashboard Bluetooth extension for MAKEROBOT Ecosystem by MAKERSPACE@UTHM.",
     "dependencies": {
         "core": "*",
