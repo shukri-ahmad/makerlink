@@ -138,29 +138,32 @@ namespace makerlink {
             let cmd = bluetooth.uartReadUntil(serial.delimiters(Delimiters.NewLine)).trim();
             
             if (cmd === "SYNC") {
-                for(let i=0; i<initCommands.length; i++) {
-                    bluetooth.uartWriteString(initCommands[i] + "\n");
-                    basic.pause(50); 
-                }
-                
-                for(let i=0; i<initCommands.length; i++) {
-                    let parts = initCommands[i].split(":");
-                    if (parts.length >= 2) {
-                        let id = parts[1].split(",")[0];
-                        let val = 0;
-                        let valid = false;
-                        
-                        if (id.charAt(0) == 'M') { val = motorVals[parseInt(id.charAt(1)) - 1]; valid = true; }
-                        else if (id.charAt(0) == 'S') { val = servoVals[parseInt(id.charAt(1)) - 1]; valid = true; }
-                        else if (id.charAt(0) == 'A') { val = analogVals[parseInt(id.charAt(1)) - 1]; valid = true; }
-                        else if (id.charAt(0) == 'D') { val = digitalVals[parseInt(id.charAt(1)) - 1]; valid = true; }
-                        
-                        if (valid) {
-                            bluetooth.uartWriteString(id + ":" + val + "\n");
-                            basic.pause(50);
+                // FIX: Running this inside a background thread prevents MakeCode from crashing due to pauses!
+                control.inBackground(function() {
+                    for(let i=0; i<initCommands.length; i++) {
+                        bluetooth.uartWriteString(initCommands[i] + "\n");
+                        basic.pause(50); // Now safe to pause!
+                    }
+                    
+                    for(let i=0; i<initCommands.length; i++) {
+                        let parts = initCommands[i].split(":");
+                        if (parts.length >= 2) {
+                            let id = parts[1].split(",")[0];
+                            let val = 0;
+                            let valid = false;
+                            
+                            if (id.charAt(0) == 'M') { val = motorVals[parseInt(id.charAt(1)) - 1]; valid = true; }
+                            else if (id.charAt(0) == 'S') { val = servoVals[parseInt(id.charAt(1)) - 1]; valid = true; }
+                            else if (id.charAt(0) == 'A') { val = analogVals[parseInt(id.charAt(1)) - 1]; valid = true; }
+                            else if (id.charAt(0) == 'D') { val = digitalVals[parseInt(id.charAt(1)) - 1]; valid = true; }
+                            
+                            if (valid) {
+                                bluetooth.uartWriteString(id + ":" + val + "\n");
+                                basic.pause(50);
+                            }
                         }
                     }
-                }
+                });
             } else {
                 parseCommand(cmd);
             }
@@ -180,13 +183,12 @@ namespace makerlink {
         let cmd = "INIT:" + getMotorStr(motor) + ",MOTOR," + startVal + "," + cw + "," + ccw;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
-        basic.pause(50);
     }
 
     /**
      * Initialize a Servo Card
      */
-    //% block="🦾 Init Servo Card $servo | Start Angle $start | Startup Delay(ms) $delay | Pos 1 $pos1 | Pos 2 $pos2"
+    //% block="🦾 Init Servo Card $servo | Start Angle $start | Startup Delay ms $delay | Pos 1 $pos1 | Pos 2 $pos2"
     //% start.defl=90 delay.defl=15 pos1.defl=0 pos2.defl=180
     //% group="Setup (On Start)"
     //% weight=89
@@ -210,7 +212,6 @@ namespace makerlink {
         let cmd = "INIT:" + getServoStr(servo) + ",SERVO," + safeStart + "," + pos1 + "," + pos2;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
-        basic.pause(50);
     }
 
     /**
@@ -228,7 +229,6 @@ namespace makerlink {
         let cmd = "INIT:" + getAnalogStr(stream) + "," + mStr + "," + val;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
-        basic.pause(50);
     }
 
     /**
@@ -249,7 +249,6 @@ namespace makerlink {
         let cmd = "INIT:" + getDigitalStr(stream) + "," + mStr + "," + val;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
-        basic.pause(50);
     }
 
     /**
@@ -262,7 +261,6 @@ namespace makerlink {
         let cmd = "INIT:" + getTextStr(stream) + ",TEXT," + val;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
-        basic.pause(50);
     }
 
     // ==============================================
