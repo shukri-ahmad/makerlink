@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MakerLink Public Control</title>
+    <link rel="icon" href="MakerLink Logo.jpg" type="image/jpeg">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #38bdf8; cursor: pointer; margin-top: -6px; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 8px; cursor: pointer; background: #334155; border-radius: 4px; }
+        #msg-box { transition: opacity 0.3s, transform 0.3s; }
+        
+        #terminal-output::-webkit-scrollbar, .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        #terminal-output::-webkit-scrollbar-track, .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); border-radius: 4px; }
+        #terminal-output::-webkit-scrollbar-thumb, .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+        .maker-card { width: 320px; max-width: 100%; height: 380px; flex-shrink: 0; display: flex; flex-direction: column; transition: width 0.3s ease; }
+        
+        select { padding-right: 0 !important; }
+    </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col p-4 md:p-6 overflow-x-hidden relative">
+
+    <div id="msg-box" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-purple-600 text-white px-6 py-3 rounded-xl shadow-2xl z-50 opacity-0 pointer-events-none font-bold text-center border-2 border-purple-400">Message</div>
+
+    <header class="flex flex-col xl:flex-row justify-between items-center bg-slate-800 p-4 rounded-xl shadow-lg border border-slate-700 mb-6 gap-6 xl:gap-0 shrink-0 relative z-10">
+        <div class="flex items-center gap-4">
+            <img src="MakerLink Logo.jpg" alt="MakerLink Logo" class="h-16 md:h-20 object-contain rounded-lg shadow-md mix-blend-screen">
+            <div class="flex flex-col justify-center">
+                <div class="flex items-center gap-3">
+                    <h1 class="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 leading-tight">MakerLink Public</h1>
+                    <div id="ping-indicator" class="w-3 h-3 rounded-full bg-slate-700 transition-colors duration-300" title="Cloud Connection Health"></div>
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center gap-3 w-full sm:w-auto justify-center">
+            
+            <div id="btn-estop-container" class="hidden bg-slate-900 border border-red-500/30 p-1 rounded-lg items-center shadow-lg">
+                <button id="btn-estop" onclick="triggerEStop()" class="bg-red-600 hover:bg-red-500 text-white font-black py-1.5 px-3 rounded-md transition-colors shadow-[0_0_10px_rgba(220,38,38,0.5)] border border-red-400 text-sm whitespace-nowrap">🚨 E-STOP</button>
+            </div>
+            
+            <input type="number" id="room-input" placeholder="Room ID..." class="bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 font-mono text-white focus:outline-none focus:border-purple-500 w-full sm:w-32 text-center text-lg">
+            <button id="btn-join" onclick="joinRoom()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-lg whitespace-nowrap">📡 Join</button>
+        </div>
+    </header>
+
+    <div class="flex flex-col gap-8 flex-1 w-full pb-20 relative z-10">
+        <div id="empty-state" class="w-full text-center text-slate-500 mt-20 font-bold flex flex-col items-center gap-4">
+            <span class="text-6xl">📡</span><p>Enter a Room ID to connect to a live MakerLink Host.</p>
+        </div>
+
+        <div id="section-terminal" class="hidden flex-col">
+            <div class="bg-slate-800 rounded-xl border border-slate-700 shadow-lg flex flex-col mb-2">
+                <div class="p-3 border-b border-slate-700 flex justify-between items-center bg-slate-900/50 rounded-t-xl">
+                    <h3 class="text-sm font-bold text-slate-300 flex items-center gap-2">💻 Host Terminal Stream</h3>
+                </div>
+                <div id="terminal-output" class="p-3 h-32 overflow-y-auto font-mono text-xs text-emerald-400 space-y-1 bg-[#0a0f18] rounded-b-xl break-words shadow-inner">
+                    <div class="text-slate-600 italic">Connected. Awaiting logs...</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="dashboard-grid" class="hidden flex-wrap gap-6 justify-center sm:justify-start"></div>
+    </div>
+
+    <div class="fixed bottom-4 right-4 z-0 opacity-40 hover:opacity-100 transition-opacity flex items-center gap-2 pointer-events-none">
+        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Powered by</span>
+        <img src="MAKEROBOT_ECO-Photoroom.jpg" alt="Makerobot Ecosystem" class="h-8 object-contain rounded mix-blend-screen pointer-events-auto">
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyAMLoInCYEYyT97RtkjW6rnT0lKTu7_xik", authDomain: "makerlink-b575b.firebaseapp.com", databaseURL: "https://makerlink-b575b-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "makerlink-b575b", storageBucket: "makerlink-b575b.firebasestorage.app" };
+        firebase.initializeApp(firebaseConfig); const db = firebase.database();
+        
+        let currentRoom = null; 
+        const sensorCharts = {};
+        let publicCardData = {}; 
+        let advancedData = {};
+        let watchdogTimer = null;
+        
+        const cardSizes = ['320px', '664px', '1008px', '1352px'];
+
+        function pingCloud() {
+            const p = document.getElementById('ping-indicator');
+            if(!p) return;
+            p.className = "w-3 h-3 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.8)] transition-colors duration-75";
+            clearTimeout(p.timer);
+            p.timer = setTimeout(() => {
+                p.className = "w-3 h-3 rounded-full bg-slate-700 transition-colors duration-300";
+            }, 150);
+
+            clearTimeout(watchdogTimer);
+            watchdogTimer = setTimeout(() => {
+                p.className = "w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] transition-colors duration-300";
+            }, 2500); 
+        }
+
+        function clearWatchdog() {
+            clearTimeout(watchdogTimer);
+            const p = document.getElementById('ping-indicator');
+            if(p) p.className = "w-3 h-3 rounded-full bg-slate-700 transition-colors duration-300";
+        }
+
+        function getAnalogColor(val) {
+            let r = Math.min(1, Math.max(0, val / 1023));
+            let red = Math.round(100 + r * 149);
+            let green = Math.round(116 - r * 1);
+            let blue = Math.round(139 - r * 117);
+            return `rgb(${red}, ${green}, ${blue})`;
+        }
+
+        function getAnalogOutColor(val) {
+            let r = Math.min(1, Math.max(0, val / 1023));
+            let red = Math.round(100 - r * 41);
+            let green = Math.round(116 + r * 14);
+            let blue = Math.round(139 + r * 107);
+            return `rgb(${red}, ${green}, ${blue})`;
+        }
+
+        function showMsg(msg) { const box = document.getElementById('msg-box'); box.innerText = msg; box.classList.remove('opacity-0', 'pointer-events-none'); box.classList.add('opacity-100'); setTimeout(() => { box.classList.remove('opacity-100'); box.classList.add('opacity-0', 'pointer-events-none'); }, 4000); }
+        function escapeHTML(str) { return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag])); }
+        function appendTerminal(msg, time, colorClass) { const term = document.getElementById('terminal-output'); if (term.innerHTML.includes("Awaiting logs...")) term.innerHTML = ''; const line = document.createElement('div'); line.innerHTML = `<span class="text-slate-600 mr-2">[${time}]</span> <span class="${colorClass || 'text-emerald-400'}">${escapeHTML(msg)}</span>`; term.appendChild(line); term.scrollTop = term.scrollHeight; }
+
+        function triggerEStop() {
+            sendRemoteCommand("STOPALL");
+            Object.keys(publicCardData).forEach(id => {
+                let info = publicCardData[id];
+                if (info.type === 'motor') {
+                    advancedData[id] = 0;
+                    let el = document.getElementById(`val-${id}`);
+                    if (el) el.innerText = 'STOP (0)';
+                } else if (info.type === 'analog' && info.mode === 'OUT') {
+                    updateAnalogOutUI(id, 0);
+                    sendRemoteCommand(`${id}:0`);
+                } else if (info.type === 'digital' && (info.mode === 'OUT' || info.mode === 'PUSH')) {
+                    updateDigitalUI(id, 0);
+                    sendRemoteCommand(`${id}:0`);
+                } else if (info.type === 'led') {
+                    advancedData[id] = 0;
+                    updateLEDUI(id, 0);
+                    sendRemoteCommand(`${id}:0`);
+                } else if (info.type === 'text' && info.mode === 'OUT') {
+                    let inEl = document.getElementById(`input-${id}`);
+                    if (inEl) inEl.value = "";
+                    let valEl = document.getElementById(`val-${id}`);
+                    if (valEl) valEl.innerText = "Ready to send";
+                    advancedData[id] = "";
+                    sendRemoteCommand(`${id}: `); 
+                }
+            });
+            appendTerminal("🚨 PUBLIC E-STOP TRIGGERED.", new Date().toLocaleTimeString('en-US', { hour12: false }), "text-red-400");
+        }
+
+        function joinRoom() {
+            const roomId = document.getElementById('room-input').value; if (!roomId) { showMsg("Please enter a valid Room ID."); return; }
+            if(currentRoom) { db.ref('rooms/' + currentRoom + '/state').off(); db.ref('rooms/' + currentRoom + '/logs').off(); db.ref('rooms/' + currentRoom + '/layout').off(); db.ref('rooms/' + currentRoom + '/config').off(); db.ref('rooms/' + currentRoom + '/heartbeat').off(); }
+            currentRoom = roomId; const btn = document.getElementById('btn-join'); btn.innerHTML = "✅ Connected"; btn.classList.replace("bg-purple-600", "bg-green-600"); btn.classList.replace("hover:bg-purple-500", "hover:bg-green-500");
+            showMsg(`Joined Room ${roomId}`);
+            document.getElementById('empty-state').innerHTML = `<span class="text-6xl text-purple-500 animate-pulse">⏳</span><p>Waiting for Host data...</p>`;
+            document.getElementById('section-terminal').classList.add('hidden'); document.getElementById('section-terminal').classList.remove('flex');
+            document.getElementById('dashboard-grid').classList.add('hidden'); document.getElementById('dashboard-grid').classList.remove('flex');
+
+            db.ref('rooms/' + currentRoom + '/config').on('value', (snap) => {
+                const cfg = snap.val();
+                const termSec = document.getElementById('section-terminal');
+                if (cfg && cfg.terminalVisible === false) { termSec.style.display = 'none'; } 
+                else { termSec.style.display = 'flex'; }
+                
+                const estopBtn = document.getElementById('btn-estop-container');
+                if (cfg && cfg.estopVisible === false) { estopBtn.style.display = 'none'; } 
+                else { estopBtn.style.display = 'flex'; }
+            });
+
+            db.ref('rooms/' + currentRoom + '/heartbeat').on('value', (snap) => {
+                if(snap.val()) pingCloud();
+            });
+
+            db.ref('rooms/' + currentRoom + '/state').on('value', (snap) => { 
+                let data = snap.val(); 
+                if(data) { 
+                    if (data.empty) {
+                        document.getElementById('empty-state').classList.remove('hidden');
+                        document.getElementById('dashboard-grid').classList.add('hidden');
+                        document.getElementById('empty-state').innerHTML = `<span class="text-6xl">📡</span><p>Host is connected, but no cards are visible.</p>`;
+                        return;
+                    }
+                    if (!Array.isArray(data)) data = Object.values(data);
+                    renderSharedCards(data); 
+                } else { 
+                    clearWatchdog();
+                    document.getElementById('empty-state').classList.remove('hidden'); 
+                    document.getElementById('dashboard-grid').classList.add('hidden'); 
+                    document.getElementById('dashboard-grid').classList.remove('flex'); 
+                    document.getElementById('empty-state').innerHTML = `<span class="text-6xl">📡</span><p>Room ${roomId} is empty or closed.</p>`; 
+                } 
+            });
+            
+            db.ref('rooms/' + currentRoom + '/logs').on('child_added', (snap) => { const log = snap.val(); if (log) appendTerminal(log.msg, log.time, log.color); });
+            
+            db.ref('rooms/' + currentRoom + '/layout').on('value', (snap) => { 
+                const layoutOrder = snap.val(); 
+                if(layoutOrder && Array.isArray(layoutOrder)) { 
+                    const grid = document.getElementById('dashboard-grid'); 
+                    layoutOrder.forEach(item => { 
+                        let id = typeof item === 'string' ? item : item.id;
+                        const card = document.getElementById(`public-card-${id}`); 
+                        if(card) {
+                            let s = item.size || '0';
+                            card.setAttribute('data-size', s);
+                            card.style.width = cardSizes[parseInt(s)];
+                            grid.appendChild(card); 
+                        }
+                    }); 
+                } 
+            });
+        }
+
+        function sendRemoteCommand(cmd) { if(!currentRoom) return; db.ref('rooms/' + currentRoom + '/command').push({ cmd: cmd, ts: Date.now() }); }
+        
+        function sendMotorRemoteCommand(id, action) {
+            let card = publicCardData[id];
+            if (!card) return;
+            
+            let cwSpd = card.cwSpd !== undefined ? parseInt(card.cwSpd) : 255;
+            let ccwSpd = card.ccwSpd !== undefined ? parseInt(card.ccwSpd) : 255;
+            let val = 0;
+            
+            if (action === 'cw') val = cwSpd;
+            else if (action === 'ccw') val = -ccwSpd;
+            
+            if (id === 'M1' || id === 'M2') { val = -val; }
+            
+            sendRemoteCommand(`${id}:${val}`);
+            
+            let displayStr = 'STOP (0)';
+            if (val !== 0) {
+                if (id === 'M1' || id === 'M2') {
+                    displayStr = val < 0 ? `CW (${Math.abs(val)})` : `CCW (${Math.abs(val)})`;
+                } else {
+                    displayStr = val > 0 ? `CW (${Math.abs(val)})` : `CCW (${Math.abs(val)})`;
+                }
+            }
+            let el = document.getElementById(`val-${id}`);
+            if (el) el.innerText = displayStr;
+            advancedData[id] = val;
+        }
+
+        function toggleLED(id, i) {
+            let currentNum = parseInt(advancedData[id]) || 0;
+            currentNum = currentNum ^ (1 << i); 
+            advancedData[id] = currentNum;
+            updateLEDUI(id, currentNum);
+        }
+
+        function clearLED(id) {
+            advancedData[id] = 0;
+            updateLEDUI(id, 0);
+        }
+
+        function sendLED(id) {
+            let num = parseInt(advancedData[id]) || 0;
+            sendRemoteCommand(`${id}:${num}`);
+        }
+
+        function updateLEDUI(id, valNum) {
+            let num = parseInt(valNum) || 0;
+            advancedData[id] = num;
+            for(let i=0; i<25; i++) {
+                let led = document.getElementById(`led-${id}-${i}`);
+                if(led) {
+                    if((num & (1 << i)) !== 0) {
+                        led.className = "w-7 h-7 rounded-sm cursor-pointer transition-colors bg-red-500 border border-red-400 shadow-[0_0_8px_rgba(239,68,68,0.8)]";
+                    } else {
+                        led.className = "w-7 h-7 rounded-sm bg-slate-800 cursor-pointer border border-slate-600 transition-colors";
+                    }
+                }
+            }
+        }
+
+        function updateDigitalUI(id, val) {
+            let v = Number(val); advancedData[id] = v; let valIn = document.getElementById(`val-${id}`);
+            if(valIn) { 
+                valIn.innerText = v === 1 ? 'HIGH' : 'LOW'; 
+                if(v === 1) { valIn.style.backgroundColor = '#dc2626'; valIn.style.color = '#ffffff'; valIn.style.borderColor = '#f87171'; valIn.style.boxShadow = '0 0 25px rgba(220, 38, 38, 0.8)'; } 
+                else { valIn.style.backgroundColor = '#0f172a'; valIn.style.color = '#64748b'; valIn.style.borderColor = '#1e293b'; valIn.style.boxShadow = 'inset 0 4px 6px rgba(0, 0, 0, 0.6)'; } 
+            }
+            
+            let valOut = document.getElementById(`val-out-${id}`);
+            if(valOut) { 
+                if(v === 1) { valOut.style.backgroundColor = '#2563eb'; valOut.style.borderColor = '#60a5fa'; valOut.style.boxShadow = '0 0 25px rgba(37, 99, 235, 0.8)'; } 
+                else { valOut.style.backgroundColor = '#0f172a'; valOut.style.borderColor = '#1e293b'; valOut.style.boxShadow = 'inset 0 4px 6px rgba(0, 0, 0, 0.6)'; } 
+            }
+        }
+
+        function updateAnalogOutUI(id, val) {
+            let v = Number(val); advancedData[id] = v;
+            let elOut = document.getElementById(`val-out-${id}`);
+            if(elOut) { elOut.innerText = v; elOut.style.color = getAnalogColor(v); }
+            let sl = document.getElementById(`slider-${id}`);
+            if(sl && sl.value != v) sl.value = v;
+        }
+
+        function updateVal(id, val) { 
+            let valEl = document.getElementById(`val-${id}`);
+            if(valEl) valEl.innerText = val + (id.startsWith('S') ? '°' : ''); 
+            advancedData[id] = Number(val) || val; 
+        }
+
+        function renderSharedCards(sharedCards) {
+            const gridEl = document.getElementById('dashboard-grid');
+            document.getElementById('empty-state').classList.add('hidden'); 
+            document.getElementById('section-terminal').classList.remove('hidden'); 
+            gridEl.classList.remove('hidden'); gridEl.classList.add('flex');
+            
+            const currentCardIds = sharedCards.map(c => `public-card-${c.id}`);
+            document.querySelectorAll('[id^="public-card-"]').forEach(child => { if (!currentCardIds.includes(child.id)) child.remove(); });
+
+            sharedCards.forEach(card => {
+                publicCardData[card.id] = card; 
+                
+                let cardEl = document.getElementById(`public-card-${card.id}`);
+                let isOutput = (card.type === 'analog' && card.mode === 'OUT') || (card.type === 'digital' && (card.mode === 'OUT' || card.mode === 'PUSH')) || (card.type === 'text' && card.mode === 'OUT') || card.type === 'motor' || card.type === 'servo' || card.type === 'led';
+                
+                if (!cardEl) {
+                    cardEl = document.createElement('div'); 
+                    let borderTheme = card.type === 'analog' ? 'border-purple-500/60' : card.type === 'digital' ? 'border-emerald-500/60' : card.type === 'motor' ? 'border-orange-500/60' : card.type === 'text' ? 'border-pink-500/60' : card.type === 'led' ? 'border-yellow-500/60' : 'border-blue-500/60';
+                    
+                    cardEl.className = `maker-card bg-slate-800 rounded-xl border-2 ${borderTheme} shadow-lg relative z-10`;
+                    cardEl.id = `public-card-${card.id}`;
+                    cardEl.setAttribute('data-size', '0');
+                    
+                    let colorClass = card.type === 'analog' ? 'text-purple-400' : card.type === 'digital' ? 'text-emerald-400' : card.type === 'motor' ? 'text-orange-400' : card.type === 'text' ? 'text-pink-400' : card.type === 'led' ? 'text-yellow-400' : 'text-blue-400';
+                    let iconStr = card.type === 'analog' ? '📊' : card.type === 'digital' ? '🚥' : card.type === 'motor' ? '⚙️' : card.type === 'text' ? '📝' : card.type === 'led' ? '🔲' : '🦾';
+
+                    let permBtnHTML = isOutput ? `<span id="public-perm-${card.id}" class="ml-2 text-[10px] border px-1.5 py-0.5 rounded transition-colors bg-green-900/50 text-green-400 border-green-700">🎮 Public</span>` : '';
+
+                    let html = `<div class="p-3 bg-slate-900 border-b-2 ${borderTheme} flex justify-between items-center rounded-t-xl"><div class="flex items-center gap-2"><span class="font-bold text-sm ${colorClass}">${card.id}</span><span class="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400 border border-slate-700">${iconStr} ${card.mode || card.type.toUpperCase()}</span></div><div class="flex items-center">${permBtnHTML}</div></div><div class="p-4 flex-1 min-h-0 flex flex-col justify-center items-center bg-slate-800 overflow-hidden">`;
+
+                    if (card.type === 'analog' && card.mode === 'IN') {
+                        html += `<div class="w-full flex-1 relative min-h-[120px] bg-slate-900 rounded-lg border border-slate-700 mb-4 flex items-center justify-center overflow-hidden">
+                                     <div id="val-${card.id}" class="absolute z-10 text-6xl font-mono font-black tracking-tighter transition-colors duration-200" style="color: rgb(100, 116, 139); text-shadow: 0px 4px 15px rgba(0,0,0,1), 0px 0px 4px rgba(0,0,0,0.8);">0</div>
+                                     <canvas id="chart-${card.id}" class="absolute inset-0 w-full h-full opacity-60"></canvas>
+                                 </div>
+                                 <div class="flex gap-2 w-full mt-auto">
+                                    <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 text-center font-bold">MIN</label><input type="number" id="ymin-${card.id}" value="" placeholder="Auto" readonly onchange="updateSensorChartConfig('${card.id}')" class="ui-editable-num w-full bg-slate-900 border border-slate-600 rounded px-1 py-1 text-center text-xs font-mono text-slate-300"></div>
+                                    <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 text-center font-bold">MAX</label><input type="number" id="ymax-${card.id}" value="" placeholder="Auto" readonly onchange="updateSensorChartConfig('${card.id}')" class="ui-editable-num w-full bg-slate-900 border border-slate-600 rounded px-1 py-1 text-center text-xs font-mono text-slate-300"></div>
+                                    <div class="flex-1 flex flex-col">
+                                        <label class="text-[9px] text-slate-500 text-center font-bold">TIME</label>
+                                        <select id="time-${card.id}" disabled class="ui-editable-num w-full bg-slate-900 border border-slate-600 rounded px-1 py-1 text-center text-xs font-mono text-slate-300 appearance-none">
+                                            <option value="0">All</option>
+                                            <option value="900000">15 Min</option>
+                                            <option value="3600000">1 Hour</option>
+                                            <option value="14400000">4 Hours</option>
+                                            <option value="86400000">1 Day</option>
+                                            <option value="604800000">1 Week</option>
+                                        </select>
+                                    </div>
+                                 </div>`;
+                    } 
+                    else if (card.type === 'analog' && card.mode === 'OUT') {
+                        html += `<div class="w-full flex-1 flex items-center justify-center">
+                                     <div id="val-out-${card.id}" class="text-6xl font-mono font-black tracking-tighter transition-colors duration-200" style="color: rgb(100, 116, 139); text-shadow: 0px 4px 15px rgba(0,0,0,0.5);">0</div>
+                                 </div>
+                                 <input type="range" id="slider-${card.id}" min="0" max="1023" value="0" oninput="updateAnalogOutUI('${card.id}', this.value); sendRemoteCommand('${card.id}:'+this.value);" class="w-full mb-2 mt-auto">
+                                 <div class="flex justify-between w-full text-xs text-slate-500 font-mono"><span>0</span><span>1023</span></div>`;
+                    } 
+                    else if (card.type === 'digital' && card.mode === 'IN') {
+                        html += `<div id="val-${card.id}" class="w-28 h-28 rounded-full flex items-center justify-center text-3xl font-bold transition-all duration-200 border-[4px]">LOW</div>`;
+                    } 
+                    else if (card.type === 'digital' && card.mode === 'OUT') {
+                        html += `<div class="flex-1 flex items-center justify-center w-full">
+                                     <div id="val-out-${card.id}" class="w-20 h-20 rounded-2xl transition-all duration-200 border-[3px]"></div>
+                                 </div>
+                                 <div class="flex flex-col gap-2 w-full mt-auto">
+                                     <button id="btn-on-${card.id}" onclick="sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1);" class="w-full py-2 px-2 bg-red-600 hover:bg-red-500 rounded-lg text-white font-bold text-sm shadow-lg border border-red-500 truncate">${card.btnOn || "ON"}</button>
+                                     <button id="btn-off-${card.id}" onclick="sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0);" class="w-full py-2 px-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 font-bold text-sm shadow-lg border border-slate-700 truncate">${card.btnOff || "OFF"}</button>
+                                 </div>`;
+                    } 
+                    else if (card.type === 'digital' && card.mode === 'PUSH') {
+                        html += `<div class="flex-1 flex items-center justify-center w-full">
+                                     <div id="val-out-${card.id}" class="w-20 h-20 rounded-2xl transition-all duration-200 border-[3px]"></div>
+                                 </div>
+                                 <div class="flex flex-col gap-2 w-full mt-auto">
+                                     <button id="btn-push-${card.id}" 
+                                        onmousedown="sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1);" 
+                                        onmouseup="sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0);" 
+                                        onmouseleave="if(advancedData['${card.id}'] == 1) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }"
+                                        ontouchstart="sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1);"
+                                        ontouchend="sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0);"
+                                        class="w-full py-3 px-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-white font-bold text-lg shadow-lg border border-purple-500 truncate select-none active:bg-purple-700">${card.btnPush || "HOLD"}</button>
+                                 </div>`;
+                    } 
+                    else if (card.type === 'text' && card.mode === 'IN') {
+                        html += `<div class="w-full h-full overflow-y-auto custom-scrollbar flex p-2"><div id="val-${card.id}" class="m-auto w-full text-center text-3xl font-bold text-pink-400 break-words whitespace-pre-wrap"></div></div>`;
+                    } 
+                    else if (card.type === 'text' && card.mode === 'OUT') {
+                        html += `<div class="w-full flex-1 flex flex-col justify-center items-center gap-4 mt-8">
+                                    <input type="text" id="input-${card.id}" placeholder="Type message..." class="w-full bg-slate-900 border border-pink-500/50 rounded-lg px-4 py-3 text-pink-400 font-bold focus:outline-none focus:border-pink-500 shadow-inner">
+                                    <button onclick="let val = document.getElementById('input-${card.id}').value; sendRemoteCommand('${card.id}:'+val); document.getElementById('val-${card.id}').innerText = 'Sent: ' + val; advancedData['${card.id}'] = val; document.getElementById('input-${card.id}').value = '';" class="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-3 rounded-lg transition-colors shadow-lg active:bg-pink-700 border border-pink-500">Send to micro:bit</button>
+                                    <div id="val-${card.id}" class="text-xs text-slate-500 truncate w-full text-center mt-auto font-mono">Ready to send</div>
+                                 </div>`;
+                    } 
+                    else if (card.type === 'led') {
+                        html += `<div class="grid grid-cols-5 gap-2 my-auto p-4 bg-slate-900 rounded-xl border border-slate-700 shadow-inner">
+                                    ${Array.from({length: 25}).map((_, i) => `<div id="led-${card.id}-${i}" onclick="toggleLED('${card.id}', ${i})" class="w-7 h-7 rounded-sm bg-slate-800 cursor-pointer border border-slate-600 transition-colors"></div>`).join('')}
+                                 </div>
+                                 <div class="flex justify-between w-full mt-auto gap-3">
+                                     <button id="btn-clear-led-${card.id}" onclick="clearLED('${card.id}')" class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold py-2 px-4 rounded-lg text-xs transition-colors border border-slate-600 shadow">CLEAR</button>
+                                     <button id="btn-send-led-${card.id}" onclick="sendLED('${card.id}')" class="flex-1 bg-yellow-600 hover:bg-yellow-500 text-yellow-950 font-bold py-2 rounded-lg text-xs transition-colors border border-yellow-500 shadow">SEND TO MICRO:BIT</button>
+                                 </div>`;
+                    } 
+                    else if (card.type === 'motor') {
+                        html += `<div id="val-${card.id}" class="text-2xl font-mono text-orange-400 font-bold mb-6 w-full text-center bg-slate-900 py-2 rounded-lg border border-slate-700 shadow-inner">STOP (0)</div>
+                                 <div class="flex flex-col gap-2 w-full mt-auto">
+                                     <div class="flex justify-center gap-6 w-full">
+                                         <button id="btn-ccw-${card.id}" onclick="sendMotorRemoteCommand('${card.id}', 'ccw')" class="w-28 bg-yellow-600 hover:bg-yellow-500 text-white text-sm font-bold py-2 px-1 rounded-lg shadow-lg truncate">${card.btnCcw || "⏪ CCW"}</button>
+                                         <button id="btn-cw-${card.id}" onclick="sendMotorRemoteCommand('${card.id}', 'cw')" class="w-28 bg-green-600 hover:bg-green-500 text-white text-sm font-bold py-2 px-1 rounded-lg shadow-lg truncate">${card.btnCw || "CW ⏩"}</button>
+                                     </div>
+                                     <button id="btn-stop-${card.id}" onclick="sendMotorRemoteCommand('${card.id}', 'stop')" class="w-full bg-red-600 hover:bg-red-500 text-white text-sm font-bold py-2 px-1 rounded-lg shadow-lg truncate">${card.btnStop || "⏹️ STOP"}</button>
+                                 </div>`;
+                    } 
+                    else if (card.type === 'servo') {
+                        html += `<div id="val-${card.id}" class="text-5xl font-mono font-bold mb-8 mt-auto text-blue-400">90°</div>
+                                 <div class="flex gap-3 w-full">
+                                     <div class="flex-1 flex flex-col gap-1">
+                                         <label class="text-[9px] text-slate-500 text-center font-bold">ANGLE</label>
+                                         <div class="w-full bg-slate-900 border border-slate-600 rounded px-1 py-1 text-center text-xs font-mono text-blue-400 shadow-inner" id="pos1-val-display-${card.id}">0</div>
+                                         <button id="btn-pos1-${card.id}" onclick="sendRemoteCommand('${card.id}:POS1')" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-1.5 px-1 rounded-lg shadow-lg border border-blue-700/50 truncate mt-1">${card.btnPos1 || 'Pos 1'}</button>
+                                     </div>
+                                     <div class="flex-1 flex flex-col gap-1">
+                                         <label class="text-[9px] text-slate-500 text-center font-bold">ANGLE</label>
+                                         <div class="w-full bg-slate-900 border border-slate-600 rounded px-1 py-1 text-center text-xs font-mono text-blue-400 shadow-inner" id="pos2-val-display-${card.id}">180</div>
+                                         <button id="btn-pos2-${card.id}" onclick="sendRemoteCommand('${card.id}:POS2')" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-1.5 px-1 rounded-lg shadow-lg border border-blue-700/50 truncate mt-1">${card.btnPos2 || 'Pos 2'}</button>
+                                     </div>
+                                 </div>`;
+                    }
+
+                    html += `</div><div id="title-${card.id}" class="p-2 bg-slate-900 border-t-2 ${borderTheme} rounded-b-xl flex justify-center text-xs font-bold text-slate-400 cursor-default truncate">${card.title || 'Label'}</div>`;
+                    cardEl.innerHTML = html; gridEl.appendChild(cardEl);
+                    if (card.type === 'analog' && card.mode === 'IN') initChart(card.id);
+                }
+
+                let titleEl = document.getElementById(`title-${card.id}`); if(titleEl) titleEl.innerText = card.title || "Label";
+                
+                if (card.type === 'analog' && card.mode === 'IN') {
+                    let tEl = document.getElementById(`time-${card.id}`);
+                    if (tEl && card.time !== undefined) { tEl.value = card.time; }
+                }
+                
+                if (card.type === 'digital' && card.mode === 'OUT') { let bOff = document.getElementById(`btn-off-${card.id}`); if(bOff) bOff.innerText = card.btnOff || "OFF"; let bOn = document.getElementById(`btn-on-${card.id}`); if(bOn) bOn.innerText = card.btnOn || "ON"; } 
+                else if (card.type === 'digital' && card.mode === 'PUSH') { let bPush = document.getElementById(`btn-push-${card.id}`); if(bPush) bPush.innerText = card.btnPush || "HOLD"; }
+                else if (card.type === 'motor') { let bCcw = document.getElementById(`btn-ccw-${card.id}`); if(bCcw) bCcw.innerText = card.btnCcw || "⏪ CCW"; let bStop = document.getElementById(`btn-stop-${card.id}`); if(bStop) bStop.innerText = card.btnStop || "⏹️ STOP"; let bCw = document.getElementById(`btn-cw-${card.id}`); if(bCw) bCw.innerText = card.btnCw || "CW ⏩"; } 
+                else if (card.type === 'servo') { 
+                    let bP1 = document.getElementById(`btn-pos1-${card.id}`); if(bP1) bP1.innerText = card.btnPos1 || "Pos 1"; 
+                    let bP2 = document.getElementById(`btn-pos2-${card.id}`); if(bP2) bP2.innerText = card.btnPos2 || "Pos 2"; 
+                    let d1 = document.getElementById(`pos1-val-display-${card.id}`); if(d1) d1.innerText = card.pos1Val !== undefined ? card.pos1Val : 0;
+                    let d2 = document.getElementById(`pos2-val-display-${card.id}`); if(d2) d2.innerText = card.pos2Val !== undefined ? card.pos2Val : 180;
+                }
+
+                // Sync incoming telemetry values safely 
+                if (card.type === 'text' && card.mode === 'IN') { let el = document.getElementById(`val-${card.id}`); if(el) el.innerText = card.val; } 
+                else if (card.type === 'text' && card.mode === 'OUT') {
+                    // Do not override user input with blank cloud state
+                }
+                else if (card.type === 'led') { updateLEDUI(card.id, card.val); }
+                else if (card.type !== 'servo') { 
+                    let valNum = parseFloat(card.val) || 0;
+                    if (card.type === 'analog' && card.mode === 'IN') {
+                        let el = document.getElementById(`val-${card.id}`); 
+                        if(el) { el.innerText = valNum; el.style.color = getAnalogColor(valNum); pushChartData(card.id, valNum); }
+                        let chart = sensorCharts[card.id]; 
+                        if(chart) { 
+                            if (card.ymin === "") delete chart.options.scales.y.min; else chart.options.scales.y.min = parseFloat(card.ymin); 
+                            if (card.ymax === "") delete chart.options.scales.y.max; else chart.options.scales.y.max = parseFloat(card.ymax); 
+                            chart.update(); 
+                        }
+                    } else if (card.type === 'analog' && card.mode === 'OUT') { updateAnalogOutUI(card.id, valNum); } 
+                    else if (card.type === 'digital') { updateDigitalUI(card.id, valNum); } 
+                    else if (card.type === 'motor') { 
+                        let el = document.getElementById(`val-${card.id}`); 
+                        if (el) { 
+                            let displayStr = 'STOP (0)';
+                            if (valNum !== 0) {
+                                if (card.id === 'M1' || card.id === 'M2') {
+                                    displayStr = valNum < 0 ? `CW (${Math.abs(valNum)})` : `CCW (${Math.abs(valNum)})`;
+                                } else {
+                                    displayStr = valNum > 0 ? `CW (${Math.abs(valNum)})` : `CCW (${Math.abs(valNum)})`;
+                                }
+                            }
+                            el.innerText = displayStr; 
+                        } 
+                    }
+                } else if (card.type === 'servo') {
+                    let valNum = parseFloat(card.val) || 0;
+                    let minB = Math.min(card.pos1Val || 0, card.pos2Val || 180);
+                    let maxB = Math.max(card.pos1Val || 0, card.pos2Val || 180);
+                    valNum = Math.max(minB, Math.min(maxB, valNum));
+                    
+                    let vl = document.getElementById(`val-${card.id}`); 
+                    if(vl) vl.innerText = valNum + '°'; 
+                }
+
+                if (isOutput) {
+                    let canControl = card.publicControl !== false; 
+                    let badge = document.getElementById(`public-perm-${card.id}`);
+                    if (badge) {
+                        if (canControl) {
+                            badge.innerText = "🎮 Public";
+                            badge.className = "ml-2 text-[10px] border px-1.5 py-0.5 rounded transition-colors bg-green-900/50 text-green-400 border-green-700";
+                        } else {
+                            badge.innerText = "👁️ View Only";
+                            badge.className = "ml-2 text-[10px] border px-1.5 py-0.5 rounded transition-colors bg-red-900/50 text-red-400 border-red-700";
+                        }
+                    }
+                    
+                    let elsToToggle = [];
+                    if (card.type === 'analog' && card.mode === 'OUT') elsToToggle = [`slider-${card.id}`];
+                    else if (card.type === 'digital' && card.mode === 'OUT') elsToToggle = [`btn-on-${card.id}`, `btn-off-${card.id}`];
+                    else if (card.type === 'digital' && card.mode === 'PUSH') elsToToggle = [`btn-push-${card.id}`];
+                    else if (card.type === 'text' && card.mode === 'OUT') elsToToggle = [`input-${card.id}`, `btn-send-${card.id}`];
+                    else if (card.type === 'led') elsToToggle = Array.from({length: 25}).map((_, i) => `led-${card.id}-${i}`).concat([`btn-clear-led-${card.id}`, `btn-send-led-${card.id}`]);
+                    else if (card.type === 'motor') elsToToggle = [`btn-ccw-${card.id}`, `btn-cw-${card.id}`, `btn-stop-${card.id}`];
+                    else if (card.type === 'servo') elsToToggle = [`btn-pos1-${card.id}`, `btn-pos2-${card.id}`]; 
+                    
+                    elsToToggle.forEach(eid => {
+                        let el = document.getElementById(eid);
+                        if(el) {
+                            el.disabled = !canControl;
+                            if(canControl) { 
+                                el.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                                // Ensure LED squares keep their cursor pointer when enabled
+                                if(eid.startsWith('led-')) el.classList.add('cursor-pointer');
+                            } 
+                            else { 
+                                el.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none'); 
+                                if(eid.startsWith('led-')) el.classList.remove('cursor-pointer');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        function initChart(id) { const ctx = document.getElementById(`chart-${id}`).getContext('2d'); sensorCharts[id] = new Chart(ctx, { type: 'line', data: { labels: [], datasets: [{ data: [], borderColor: '#c084fc', tension: 0.2, pointRadius: 0, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } } }); }
+        
+        function pushChartData(id, val) { 
+            if(!sensorCharts[id]) return; 
+            const chart = sensorCharts[id]; 
+            const timeEl = document.getElementById(`time-${id}`); 
+            const windowMs = (timeEl && timeEl.value !== "") ? parseInt(timeEl.value) : 0; 
+            
+            let now = Date.now();
+            chart.data.labels.push(now); 
+            chart.data.datasets[0].data.push(val); 
+            
+            if(windowMs > 0) { 
+                let cutoff = now - windowMs;
+                while(chart.data.labels.length > 0 && chart.data.labels[0] < cutoff) {
+                    chart.data.labels.shift(); 
+                    chart.data.datasets[0].data.shift();
+                }
+            } 
+            
+            if (chart.data.labels.length > 1500) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+            }
+            
+            chart.update(); 
+        }
+    </script>
+</body>
+</html>
