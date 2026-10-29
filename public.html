@@ -80,7 +80,7 @@
         let publicCardData = {}; 
         let watchdogTimer = null;
         let currentLayoutOrder = []; 
-        const advancedData = {}; // FIXED: Added this back in!
+        const advancedData = {};
         
         const cardSizes = ['320px', '664px', '1008px', '1352px'];
 
@@ -254,13 +254,6 @@
             if(sl && sl.value != v) sl.value = v;
         }
 
-        // FIXED: Re-added the missing updateVal function!
-        function updateVal(id, val) { 
-            let valEl = document.getElementById(`val-${id}`);
-            if(valEl) valEl.innerText = val + (id.startsWith('S') ? '°' : ''); 
-            advancedData[id] = Number(val) || val; 
-        }
-
         function renderSharedCards(sharedCards) {
             const gridEl = document.getElementById('dashboard-grid');
             document.getElementById('empty-state').classList.add('hidden'); 
@@ -273,7 +266,7 @@
             sharedCards.forEach(card => {
                 try {
                     publicCardData[card.id] = card; 
-                    advancedData[card.id] = card.val; // Keep advancedData synced for Push buttons
+                    advancedData[card.id] = card.val; 
                     
                     let cardEl = document.getElementById(`public-card-${card.id}`);
                     let isOutput = (card.type === 'analog' && card.mode === 'OUT') || (card.type === 'digital' && (card.mode === 'OUT' || card.mode === 'PUSH')) || card.type === 'motor' || card.type === 'servo';
@@ -375,8 +368,8 @@
                             let sVal = card.val !== undefined ? parseInt(card.val) : 90;
                             sVal = Math.max(minBound, Math.min(maxBound, sVal));
                             
+                            // FIXED: Removed the slider entirely from the Public layout!
                             html += `<div id="val-${card.id}" class="text-5xl font-mono text-blue-400 font-bold mb-8 mt-auto">${sVal}°</div>
-                                     <input type="range" id="slider-${card.id}" min="${minBound}" max="${maxBound}" value="${sVal}" oninput="if(!this.disabled) { updateVal('${card.id}', this.value); sendRemoteCommand('${card.id}:'+this.value); }" class="w-full mb-4 mt-auto">
                                      <div class="flex gap-3 w-full">
                                          <div class="flex-1 flex flex-col gap-1">
                                              <label class="text-[9px] text-slate-500 text-center font-bold">ANGLE</label>
@@ -444,7 +437,7 @@
                         else if (card.type === 'digital' && card.mode === 'OUT') elsToToggle = [`btn-on-${card.id}`, `btn-off-${card.id}`];
                         else if (card.type === 'digital' && card.mode === 'PUSH') elsToToggle = [`btn-push-${card.id}`];
                         else if (card.type === 'motor') elsToToggle = [`btn-ccw-${card.id}`, `btn-cw-${card.id}`, `btn-stop-${card.id}`];
-                        else if (card.type === 'servo') elsToToggle = [`slider-${card.id}`, `btn-pos1-${card.id}`, `btn-pos2-${card.id}`]; 
+                        else if (card.type === 'servo') elsToToggle = [`btn-pos1-${card.id}`, `btn-pos2-${card.id}`]; // Slider removed from this list as well
                         
                         elsToToggle.forEach(eid => {
                             let el = document.getElementById(eid);
