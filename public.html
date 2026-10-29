@@ -79,7 +79,8 @@
         const sensorCharts = {};
         let publicCardData = {}; 
         let watchdogTimer = null;
-        let currentLayoutOrder = []; // Store layout globally so we can re-apply it when un-hiding cards!
+        let currentLayoutOrder = []; 
+        const advancedData = {}; // FIXED: Added this back in!
         
         const cardSizes = ['320px', '664px', '1008px', '1352px'];
 
@@ -170,12 +171,11 @@
                 const layoutOrder = snap.val(); 
                 if(layoutOrder && Array.isArray(layoutOrder)) { 
                     currentLayoutOrder = layoutOrder;
-                    applyPublicLayout(); // Apply it immediately
+                    applyPublicLayout(); 
                 } 
             });
         }
         
-        // NEW FIX: Force layout order onto the cards. This ensures un-hidden cards snap into the right spot!
         function applyPublicLayout() {
             if (!currentLayoutOrder || currentLayoutOrder.length === 0) return;
             const grid = document.getElementById('dashboard-grid'); 
@@ -186,20 +186,18 @@
                     let s = item.size || '0';
                     card.setAttribute('data-size', s);
                     card.style.width = cardSizes[parseInt(s)];
-                    // Appending an existing element safely moves it to the correct sorted end!
                     grid.appendChild(card); 
                 }
             });
         }
 
-        // Block packets from leaving the browser if card is set to View Only!
         function sendRemoteCommand(cmd) { 
             if(!currentRoom) return; 
             let id = cmd.split(':')[0];
             
             let card = publicCardData[id];
             if (card && card.publicControl === false) {
-                return; // Silently drop command
+                return; 
             }
             
             db.ref('rooms/' + currentRoom + '/command').push({ cmd: cmd, ts: Date.now() }); 
@@ -208,7 +206,7 @@
         function sendMotorRemoteCommand(id, action) {
             let card = publicCardData[id];
             if (!card) return;
-            if (card.publicControl === false) return; // Drop command
+            if (card.publicControl === false) return; 
             
             let cwSpd = card.cwSpd !== undefined ? parseInt(card.cwSpd) : 255;
             let ccwSpd = card.ccwSpd !== undefined ? parseInt(card.ccwSpd) : 255;
@@ -256,6 +254,13 @@
             if(sl && sl.value != v) sl.value = v;
         }
 
+        // FIXED: Re-added the missing updateVal function!
+        function updateVal(id, val) { 
+            let valEl = document.getElementById(`val-${id}`);
+            if(valEl) valEl.innerText = val + (id.startsWith('S') ? '°' : ''); 
+            advancedData[id] = Number(val) || val; 
+        }
+
         function renderSharedCards(sharedCards) {
             const gridEl = document.getElementById('dashboard-grid');
             document.getElementById('empty-state').classList.add('hidden'); 
@@ -268,6 +273,7 @@
             sharedCards.forEach(card => {
                 try {
                     publicCardData[card.id] = card; 
+                    advancedData[card.id] = card.val; // Keep advancedData synced for Push buttons
                     
                     let cardEl = document.getElementById(`public-card-${card.id}`);
                     let isOutput = (card.type === 'analog' && card.mode === 'OUT') || (card.type === 'digital' && (card.mode === 'OUT' || card.mode === 'PUSH')) || card.type === 'motor' || card.type === 'servo';
@@ -484,7 +490,6 @@
                 }
             });
             
-            // NEW FIX: Force layout order after updating cards to prevent "bottom-stacking" bugs
             applyPublicLayout();
         }
 
