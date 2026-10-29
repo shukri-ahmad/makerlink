@@ -183,11 +183,24 @@
             });
         }
 
-        function sendRemoteCommand(cmd) { if(!currentRoom) return; db.ref('rooms/' + currentRoom + '/command').push({ cmd: cmd, ts: Date.now() }); }
+        // --- NEW JAVASCRIPT GUARD ---
+        // Block packets from leaving the browser if card is set to View Only!
+        function sendRemoteCommand(cmd) { 
+            if(!currentRoom) return; 
+            let id = cmd.split(':')[0];
+            
+            let card = publicCardData[id];
+            if (card && card.publicControl === false) {
+                return; // Silently drop command
+            }
+            
+            db.ref('rooms/' + currentRoom + '/command').push({ cmd: cmd, ts: Date.now() }); 
+        }
         
         function sendMotorRemoteCommand(id, action) {
             let card = publicCardData[id];
             if (!card) return;
+            if (card.publicControl === false) return; // Drop command
             
             let cwSpd = card.cwSpd !== undefined ? parseInt(card.cwSpd) : 255;
             let ccwSpd = card.ccwSpd !== undefined ? parseInt(card.ccwSpd) : 255;
@@ -290,7 +303,7 @@
                         html += `<div class="w-full flex-1 flex items-center justify-center">
                                      <div id="val-out-${card.id}" class="text-6xl font-mono font-black tracking-tighter transition-colors duration-200" style="color: rgb(100, 116, 139); text-shadow: 0px 4px 15px rgba(0,0,0,0.5);">0</div>
                                  </div>
-                                 <input type="range" id="slider-${card.id}" min="0" max="1023" value="0" oninput="updateAnalogOutUI('${card.id}', this.value); sendRemoteCommand('${card.id}:'+this.value);" class="w-full mb-2 mt-auto">
+                                 <input type="range" id="slider-${card.id}" min="0" max="1023" value="0" oninput="if(!this.disabled) { updateAnalogOutUI('${card.id}', this.value); sendRemoteCommand('${card.id}:'+this.value); }" class="w-full mb-2 mt-auto">
                                  <div class="flex justify-between w-full text-xs text-slate-500 font-mono"><span>0</span><span>1023</span></div>`;
                     } 
                     else if (card.type === 'digital' && card.mode === 'IN') {
@@ -300,8 +313,8 @@
                                      <div id="val-out-${card.id}" class="w-20 h-20 rounded-2xl transition-all duration-200 border-[3px]"></div>
                                  </div>
                                  <div class="flex flex-col gap-2 w-full mt-auto">
-                                     <button id="btn-on-${card.id}" onclick="sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1);" class="w-full py-2 px-2 bg-red-600 hover:bg-red-500 rounded-lg text-white font-bold text-sm shadow-lg border border-red-500 truncate">${card.btnOn || "ON"}</button>
-                                     <button id="btn-off-${card.id}" onclick="sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0);" class="w-full py-2 px-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 font-bold text-sm shadow-lg border border-slate-700 truncate">${card.btnOff || "OFF"}</button>
+                                     <button id="btn-on-${card.id}" onclick="if(!this.disabled) { sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1); }" class="w-full py-2 px-2 bg-red-600 hover:bg-red-500 rounded-lg text-white font-bold text-sm shadow-lg border border-red-500 truncate">${card.btnOn || "ON"}</button>
+                                     <button id="btn-off-${card.id}" onclick="if(!this.disabled) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }" class="w-full py-2 px-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 font-bold text-sm shadow-lg border border-slate-700 truncate">${card.btnOff || "OFF"}</button>
                                  </div>`;
                     } else if (card.type === 'digital' && card.mode === 'PUSH') {
                         html += `<div class="flex-1 flex items-center justify-center w-full">
@@ -309,11 +322,11 @@
                                  </div>
                                  <div class="flex flex-col gap-2 w-full mt-auto">
                                      <button id="btn-push-${card.id}" 
-                                        onmousedown="sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1);" 
-                                        onmouseup="sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0);" 
-                                        onmouseleave="if(advancedData['${card.id}'] == 1) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }"
-                                        ontouchstart="sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1);"
-                                        ontouchend="sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0);"
+                                        onmousedown="if(!this.disabled) { sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1); }" 
+                                        onmouseup="if(!this.disabled) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }" 
+                                        onmouseleave="if(!this.disabled && advancedData['${card.id}'] == 1) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }"
+                                        ontouchstart="if(!this.disabled) { sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1); }"
+                                        ontouchend="if(!this.disabled) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }"
                                         class="w-full py-3 px-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-white font-bold text-lg shadow-lg border border-purple-500 truncate select-none active:bg-purple-700">${card.btnPush || "HOLD"}</button>
                                  </div>`;
                     } else if (card.type === 'text') {
@@ -333,10 +346,10 @@
                         html += `<div id="val-${card.id}" class="text-2xl font-mono text-orange-400 font-bold mb-6 w-full text-center bg-slate-900 py-2 rounded-lg border border-slate-700 shadow-inner">${mDisplayStr}</div>
                                  <div class="flex flex-col gap-2 w-full mt-auto">
                                      <div class="flex justify-center gap-6 w-full">
-                                         <button id="btn-ccw-${card.id}" onclick="sendMotorRemoteCommand('${card.id}', 'ccw')" class="w-28 bg-yellow-600 hover:bg-yellow-500 text-white text-sm font-bold py-2 px-1 rounded-lg shadow-lg truncate">${card.btnCcw || "⏪ CCW"}</button>
-                                         <button id="btn-cw-${card.id}" onclick="sendMotorRemoteCommand('${card.id}', 'cw')" class="w-28 bg-green-600 hover:bg-green-500 text-white text-sm font-bold py-2 px-1 rounded-lg shadow-lg truncate">${card.btnCw || "CW ⏩"}</button>
+                                         <button id="btn-ccw-${card.id}" onclick="if(!this.disabled) { sendMotorRemoteCommand('${card.id}', 'ccw'); }" class="w-28 bg-yellow-600 hover:bg-yellow-500 text-white text-sm font-bold py-2 px-1 rounded-lg shadow-lg truncate">${card.btnCcw || "⏪ CCW"}</button>
+                                         <button id="btn-cw-${card.id}" onclick="if(!this.disabled) { sendMotorRemoteCommand('${card.id}', 'cw'); }" class="w-28 bg-green-600 hover:bg-green-500 text-white text-sm font-bold py-2 px-1 rounded-lg shadow-lg truncate">${card.btnCw || "CW ⏩"}</button>
                                      </div>
-                                     <button id="btn-stop-${card.id}" onclick="sendMotorRemoteCommand('${card.id}', 'stop')" class="w-full bg-red-600 hover:bg-red-500 text-white text-sm font-bold py-2 px-1 rounded-lg shadow-lg truncate">${card.btnStop || "⏹️ STOP"}</button>
+                                     <button id="btn-stop-${card.id}" onclick="if(!this.disabled) { sendMotorRemoteCommand('${card.id}', 'stop'); }" class="w-full bg-red-600 hover:bg-red-500 text-white text-sm font-bold py-2 px-1 rounded-lg shadow-lg truncate">${card.btnStop || "⏹️ STOP"}</button>
                                  </div>`;
                     } else if (card.type === 'servo') {
                         let p1 = card.pos1Val !== undefined ? parseInt(card.pos1Val) : 0;
@@ -348,16 +361,17 @@
                         sVal = Math.max(minBound, Math.min(maxBound, sVal));
                         
                         html += `<div id="val-${card.id}" class="text-5xl font-mono text-blue-400 font-bold mb-8 mt-auto">${sVal}°</div>
+                                 <input type="range" id="slider-${card.id}" min="${minBound}" max="${maxBound}" value="${sVal}" oninput="if(!this.disabled) { updateVal('${card.id}', this.value); sendRemoteCommand('${card.id}:'+this.value); }" class="w-full mb-4 mt-auto">
                                  <div class="flex gap-3 w-full">
                                      <div class="flex-1 flex flex-col gap-1">
                                          <label class="text-[9px] text-slate-500 text-center font-bold">ANGLE</label>
                                          <div class="w-full bg-slate-900 border border-slate-600 rounded px-1 py-1 text-center text-xs font-mono text-blue-400 shadow-inner" id="pos1-val-display-${card.id}">${p1}</div>
-                                         <button id="btn-pos1-${card.id}" onclick="sendRemoteCommand('${card.id}:POS1')" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-1.5 px-1 rounded-lg shadow-lg border border-blue-700/50 truncate mt-1">${card.btnPos1 || 'Pos 1'}</button>
+                                         <button id="btn-pos1-${card.id}" onclick="if(!this.disabled) { sendRemoteCommand('${card.id}:POS1'); }" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-1.5 px-1 rounded-lg shadow-lg border border-blue-700/50 truncate mt-1">${card.btnPos1 || 'Pos 1'}</button>
                                      </div>
                                      <div class="flex-1 flex flex-col gap-1">
                                          <label class="text-[9px] text-slate-500 text-center font-bold">ANGLE</label>
                                          <div class="w-full bg-slate-900 border border-slate-600 rounded px-1 py-1 text-center text-xs font-mono text-blue-400 shadow-inner" id="pos2-val-display-${card.id}">${p2}</div>
-                                         <button id="btn-pos2-${card.id}" onclick="sendRemoteCommand('${card.id}:POS2')" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-1.5 px-1 rounded-lg shadow-lg border border-blue-700/50 truncate mt-1">${card.btnPos2 || 'Pos 2'}</button>
+                                         <button id="btn-pos2-${card.id}" onclick="if(!this.disabled) { sendRemoteCommand('${card.id}:POS2'); }" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-1.5 px-1 rounded-lg shadow-lg border border-blue-700/50 truncate mt-1">${card.btnPos2 || 'Pos 2'}</button>
                                      </div>
                                  </div>`;
                     }
@@ -415,7 +429,7 @@
                     else if (card.type === 'digital' && card.mode === 'OUT') elsToToggle = [`btn-on-${card.id}`, `btn-off-${card.id}`];
                     else if (card.type === 'digital' && card.mode === 'PUSH') elsToToggle = [`btn-push-${card.id}`];
                     else if (card.type === 'motor') elsToToggle = [`btn-ccw-${card.id}`, `btn-cw-${card.id}`, `btn-stop-${card.id}`];
-                    else if (card.type === 'servo') elsToToggle = [`btn-pos1-${card.id}`, `btn-pos2-${card.id}`]; 
+                    else if (card.type === 'servo') elsToToggle = [`slider-${card.id}`, `btn-pos1-${card.id}`, `btn-pos2-${card.id}`]; // FIX: Slider is now properly targeted!
                     
                     elsToToggle.forEach(eid => {
                         let el = document.getElementById(eid);
