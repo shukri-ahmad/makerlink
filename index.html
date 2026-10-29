@@ -130,40 +130,32 @@
             saveLayoutOrder();
         }
 
-        // FIX: The Smart Save! It preserves unloaded cards and sizes so they don't get wiped during startup sync!
+        // FIX: The Smart Save has been corrected! It prioritizes the physical drag-and-drop order on screen.
         function saveLayoutOrder() { 
-            const domOrder = [];
+            const finalOrder = [];
             const currentDOMIds = new Set();
             
+            // 1. Trust the physical order of the cards currently visible on the screen
             Array.from(gridEl.children).forEach(c => { 
                 let id = c.id.replace('card-', '');
                 let size = c.getAttribute('data-size') || '0';
                 currentDOMIds.add(id);
-                domOrder.push({ id: id, size: size }); 
+                finalOrder.push({ id: id, size: size }); 
             }); 
             
+            // 2. Safely add back any cards that are in memory but haven't loaded over Bluetooth yet
             const saved = JSON.parse(localStorage.getItem('makerlink_layout') || '[]'); 
-            const finalOrder = [];
-            
             saved.forEach(item => {
                 let id = typeof item === 'string' ? item : item.id;
-                if (currentDOMIds.has(id)) {
-                    finalOrder.push(domOrder.find(c => c.id === id));
-                    currentDOMIds.delete(id); 
-                } else {
+                if (!currentDOMIds.has(id)) {
                     finalOrder.push({ id: id, size: item.size || '0' });
                 }
-            });
-            
-            currentDOMIds.forEach(id => {
-                finalOrder.push(domOrder.find(c => c.id === id));
             });
 
             localStorage.setItem('makerlink_layout', JSON.stringify(finalOrder)); 
             if (isCloudActive && cloudRoomId) { db.ref('rooms/' + cloudRoomId + '/layout').set(finalOrder); } 
         }
         
-        // FIX: Smart Labels! Merges labels so unloaded cards don't lose their custom names during startup
         function saveCustomLabels() { 
             let labels = JSON.parse(localStorage.getItem('makerlink_labels') || '{}'); 
             document.querySelectorAll('.ui-editable, .ui-btn-editable, .ui-editable-num').forEach(el => { 
