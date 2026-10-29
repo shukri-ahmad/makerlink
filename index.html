@@ -130,6 +130,64 @@
             saveLayoutOrder();
         }
 
+        // FIX: The Smart Save! It preserves unloaded cards and sizes so they don't get wiped during startup sync!
+        function saveLayoutOrder() { 
+            const domOrder = [];
+            const currentDOMIds = new Set();
+            
+            Array.from(gridEl.children).forEach(c => { 
+                let id = c.id.replace('card-', '');
+                let size = c.getAttribute('data-size') || '0';
+                currentDOMIds.add(id);
+                domOrder.push({ id: id, size: size }); 
+            }); 
+            
+            const saved = JSON.parse(localStorage.getItem('makerlink_layout') || '[]'); 
+            const finalOrder = [];
+            
+            saved.forEach(item => {
+                let id = typeof item === 'string' ? item : item.id;
+                if (currentDOMIds.has(id)) {
+                    finalOrder.push(domOrder.find(c => c.id === id));
+                    currentDOMIds.delete(id); 
+                } else {
+                    finalOrder.push({ id: id, size: item.size || '0' });
+                }
+            });
+            
+            currentDOMIds.forEach(id => {
+                finalOrder.push(domOrder.find(c => c.id === id));
+            });
+
+            localStorage.setItem('makerlink_layout', JSON.stringify(finalOrder)); 
+            if (isCloudActive && cloudRoomId) { db.ref('rooms/' + cloudRoomId + '/layout').set(finalOrder); } 
+        }
+        
+        // FIX: Smart Labels! Merges labels so unloaded cards don't lose their custom names during startup
+        function saveCustomLabels() { 
+            let labels = JSON.parse(localStorage.getItem('makerlink_labels') || '{}'); 
+            document.querySelectorAll('.ui-editable, .ui-btn-editable, .ui-editable-num').forEach(el => { 
+                if(el.id) labels[el.id] = el.value; 
+            }); 
+            localStorage.setItem('makerlink_labels', JSON.stringify(labels)); 
+        }
+
+        function applyCustomLabels() { let labels = JSON.parse(localStorage.getItem('makerlink_labels') || '{}'); for(let id in labels) { let el = document.getElementById(id); if(el) { el.value = labels[id]; if (el.onchange) el.onchange(); } } }
+        
+        function applySavedLayout() { 
+            const saved = JSON.parse(localStorage.getItem('makerlink_layout') || '[]'); 
+            saved.forEach(item => { 
+                let id = typeof item === 'string' ? item : item.id; 
+                const card = document.getElementById(`card-${id}`); 
+                if (card) { 
+                    let s = item.size || '0';
+                    card.setAttribute('data-size', s);
+                    card.style.width = cardSizes[parseInt(s)];
+                    gridEl.appendChild(card); 
+                } 
+            }); 
+        }
+
         function pingBluetooth() {
             const p = document.getElementById('ping-indicator');
             if(!p) return;
@@ -154,31 +212,6 @@
             let green = Math.round(116 + r * 14);
             let blue = Math.round(139 + r * 107);
             return `rgb(${red}, ${green}, ${blue})`;
-        }
-
-        function saveLayoutOrder() { 
-            const order = Array.from(gridEl.children).map(c => { 
-                return { id: c.id.replace('card-', ''), size: c.getAttribute('data-size') || '0' }; 
-            }); 
-            localStorage.setItem('makerlink_layout', JSON.stringify(order)); 
-            if (isCloudActive && cloudRoomId) { db.ref('rooms/' + cloudRoomId + '/layout').set(order); } 
-        }
-        
-        function saveCustomLabels() { let labels = {}; document.querySelectorAll('.ui-editable, .ui-btn-editable, .ui-editable-num').forEach(el => { if(el.id) labels[el.id] = el.value; }); localStorage.setItem('makerlink_labels', JSON.stringify(labels)); }
-        function applyCustomLabels() { let labels = JSON.parse(localStorage.getItem('makerlink_labels') || '{}'); for(let id in labels) { let el = document.getElementById(id); if(el) { el.value = labels[id]; if (el.onchange) el.onchange(); } } }
-        
-        function applySavedLayout() { 
-            const saved = JSON.parse(localStorage.getItem('makerlink_layout') || '[]'); 
-            saved.forEach(item => { 
-                let id = typeof item === 'string' ? item : item.id; 
-                const card = document.getElementById(`card-${id}`); 
-                if (card) { 
-                    let s = item.size || '0';
-                    card.setAttribute('data-size', s);
-                    card.style.width = cardSizes[parseInt(s)];
-                    gridEl.appendChild(card); 
-                } 
-            }); 
         }
 
         function showMsg(msg) { const box = document.getElementById('msg-box'); box.innerText = msg; box.classList.remove('opacity-0', 'pointer-events-none'); box.classList.add('opacity-100'); setTimeout(() => { box.classList.remove('opacity-100'); box.classList.add('opacity-0', 'pointer-events-none'); }, 4000); }
@@ -286,8 +319,6 @@
         }
 
         function createPlayingCard(id, type, mode, startVals) {
-            
-            // If card exists, seamlessly update its locked limits from MakeCode sync!
             if(document.getElementById(`card-${id}`)) {
                 if (type === 'servo' && startVals) {
                     let p1 = startVals[1] !== undefined ? parseInt(startVals[1]) : 0;
@@ -319,6 +350,7 @@
                         ccwEl.value = startVals[2] !== undefined ? parseInt(startVals[2]) : 255;
                     }
                 }
+                applySavedLayout(); applyCustomLabels(); saveLayoutOrder(); 
                 return; 
             }
             
@@ -450,7 +482,6 @@
                 let sVal = startVals[0] !== undefined ? parseInt(startVals[0]) : 90;
                 sVal = Math.max(minBound, Math.min(maxBound, sVal));
                 
-                // NO RED COLORS - just absolute strict UI limits dictated by MakeCode!
                 html += `<div id="val-${id}" class="text-5xl font-mono text-blue-400 font-bold mb-4">${sVal}°</div>
                          <input type="range" id="slider-${id}" min="${minBound}" max="${maxBound}" value="${sVal}" oninput="updateVal('${id}', this.value); sendBluetoothCommand('${id}:'+this.value);" class="w-full mb-4 mt-auto">
                          <div class="flex gap-3 w-full">
@@ -666,7 +697,6 @@
                     } else if (info.type === 'digital' && info.mode === 'PUSH') {
                         cardData.btnPush = document.getElementById(`btn-push-${id}`)?.value || "HOLD";
                     } else if (info.type === 'servo') {
-                        // Read from the locked display element!
                         cardData.pos1Val = Number(document.getElementById(`pos1-val-display-${id}`).innerText) || 0; 
                         cardData.pos2Val = Number(document.getElementById(`pos2-val-display-${id}`).innerText) || 180;
                         cardData.btnPos1 = document.getElementById(`btn-pos1-${id}`)?.value || "Pos 1"; 
