@@ -17,7 +17,16 @@
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #1e293b; border-radius: 9999px; border: 1px solid #334155; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 24px; border-radius: 9999px; background: #38bdf8; cursor: pointer; margin-top: -6px; box-shadow: 0 0 12px rgba(56, 189, 248, 0.8); transition: transform 0.1s; }
         input[type=range]::-webkit-slider-thumb:active { transform: scale(1.2); }
+        body.is-editing .ui-editable { border-bottom: 1px dashed #facc15; border-radius: 0; cursor: text !important; }
+        body:not(.is-editing) .ui-editable { border-bottom: 1px solid transparent; }
+        body:not(.is-editing) .maker-card { cursor: default; }
+        body.is-editing .maker-card { cursor: grab; border-color: #facc15 !important; box-shadow: 0 0 15px rgba(250, 204, 21, 0.2); }
+        body.is-editing .maker-card:active { cursor: grabbing; }
         
+        body.is-editing .ui-btn-editable { user-select: text !important; -webkit-user-select: text !important; }
+        
+        .size-btns { display: none; }
+        body.is-editing .size-btns { display: flex; }
         #msg-box { transition: opacity 0.3s, transform 0.3s; }
         #terminal-output::-webkit-scrollbar, .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         #terminal-output::-webkit-scrollbar-track, .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
@@ -86,6 +95,7 @@
         let watchdogTimer = null;
         let currentLayoutOrder = []; 
         const advancedData = {};
+        let isEditMode = false;
         
         let isMuted = false;
         const audioPlayers = {};
@@ -115,6 +125,34 @@
                 btn.classList.replace("bg-red-900/80", "bg-slate-700/90");
                 btn.classList.replace("border-red-800/50", "border-slate-600/50");
             }
+        }
+
+        function applyPublicLayout() {
+            if (!currentLayoutOrder || currentLayoutOrder.length === 0) return;
+            const grid = document.getElementById('dashboard-grid'); 
+            
+            let needsReorder = false;
+            let currentNodes = Array.from(grid.children);
+            
+            for (let i = 0; i < currentLayoutOrder.length; i++) {
+                let id = typeof currentLayoutOrder[i] === 'string' ? currentLayoutOrder[i] : currentLayoutOrder[i].id;
+                if (currentNodes[i] && currentNodes[i].id !== `public-card-${id}`) { needsReorder = true; break; }
+            }
+
+            currentLayoutOrder.forEach(item => { 
+                let id = typeof item === 'string' ? item : item.id; 
+                const card = document.getElementById(`public-card-${id}`); 
+                if(card) {
+                    let s = String(item.size || '0'); 
+                    if (card.getAttribute('data-size') !== s) {
+                        card.setAttribute('data-size', s);
+                        card.className = card.className.replace(/\b(md:|lg:|xl:)?col-span-\d\b/g, '').replace(/\s+/g, ' ').trim();
+                        let newClasses = cardSizes[parseInt(s)].split(' '); 
+                        card.classList.add(...newClasses);
+                    }
+                    if (needsReorder) grid.appendChild(card); 
+                }
+            });
         }
 
         function pingCloud() {
@@ -193,34 +231,6 @@
                 if(layoutOrder && Array.isArray(layoutOrder)) { currentLayoutOrder = layoutOrder; applyPublicLayout(); } 
             });
         }
-        
-        function applyPublicLayout() {
-            if (!currentLayoutOrder || currentLayoutOrder.length === 0) return;
-            const grid = document.getElementById('dashboard-grid'); 
-            
-            let needsReorder = false;
-            let currentNodes = Array.from(grid.children);
-            
-            for (let i = 0; i < currentLayoutOrder.length; i++) {
-                let id = typeof currentLayoutOrder[i] === 'string' ? currentLayoutOrder[i] : currentLayoutOrder[i].id;
-                if (currentNodes[i] && currentNodes[i].id !== `public-card-${id}`) { needsReorder = true; break; }
-            }
-
-            currentLayoutOrder.forEach(item => { 
-                let id = typeof item === 'string' ? item : item.id; 
-                const card = document.getElementById(`public-card-${id}`); 
-                if(card) {
-                    let s = String(item.size || '0'); 
-                    if (card.getAttribute('data-size') !== s) {
-                        card.setAttribute('data-size', s);
-                        card.className = card.className.replace(/\b(md:|lg:|xl:)?col-span-\d\b/g, '').replace(/\s+/g, ' ').trim();
-                        let newClasses = cardSizes[parseInt(s)].split(' '); 
-                        card.classList.add(...newClasses);
-                    }
-                    if (needsReorder) grid.appendChild(card); 
-                }
-            });
-        }
 
         function sendRemoteCommand(cmd) { 
             if(!currentRoom) return; 
@@ -244,14 +254,15 @@
         
         function setMotor(id, action) { 
             let val = 0; 
+            let cwSpdEl = document.getElementById(`cw-spd-${id}`);
+            let ccwSpdEl = document.getElementById(`ccw-spd-${id}`);
+            
             if (action === 'ccw') { 
-                let el = document.getElementById(`ccw-spd-${id}`);
-                let spd = el ? (parseInt(el.value) || 0) : 255; 
+                let spd = ccwSpdEl ? (parseInt(ccwSpdEl.value) || 0) : 255; 
                 val = -(spd); 
             } 
             else if (action === 'cw') { 
-                let el = document.getElementById(`cw-spd-${id}`);
-                let spd = el ? (parseInt(el.value) || 0) : 255; 
+                let spd = cwSpdEl ? (parseInt(cwSpdEl.value) || 0) : 255; 
                 val = (spd); 
             } 
             if (id === 'M1' || id === 'M2') { val = -val; }
@@ -270,7 +281,14 @@
         function updateDigitalUI(id, val) {
             let v = Number(val); advancedData[id] = v; let valIn = document.getElementById(`val-${id}`);
             if(valIn) { 
-                valIn.innerText = v === 1 ? 'HIGH' : 'LOW'; 
+                let lowText = 'LOW', highText = 'HIGH';
+                let lowEl = document.getElementById(`label-low-${id}`);
+                let highEl = document.getElementById(`label-high-${id}`);
+                if(lowEl) lowText = lowEl.value || 'LOW';
+                if(highEl) highText = highEl.value || 'HIGH';
+                
+                valIn.innerText = v === 1 ? highText : lowText; 
+                
                 if(v === 1) { valIn.style.backgroundColor = '#dc2626'; valIn.style.color = '#ffffff'; valIn.style.borderColor = '#f87171'; valIn.style.boxShadow = '0 0 25px rgba(220, 38, 38, 0.8)'; } 
                 else { valIn.style.backgroundColor = 'rgba(0,0,0,0.4)'; valIn.style.color = '#64748b'; valIn.style.borderColor = '#334155'; valIn.style.boxShadow = 'inset 0 4px 6px rgba(0, 0, 0, 0.6)'; } 
             }
@@ -279,7 +297,7 @@
                 if(v === 1) { valOut.style.backgroundColor = '#2563eb'; valOut.style.borderColor = '#60a5fa'; valOut.style.boxShadow = '0 0 25px rgba(37, 99, 235, 0.8)'; } 
                 else { valOut.style.backgroundColor = 'rgba(0,0,0,0.4)'; valOut.style.borderColor = '#334155'; valOut.style.boxShadow = 'inset 0 4px 6px rgba(0, 0, 0, 0.6)'; } 
             }
-            let card = document.getElementById(`public-card-${id}`);
+            let card = document.getElementById(`card-${id}`);
             if(card) { if(v === 1) card.style.boxShadow = '0 0 20px rgba(16, 185, 129, 0.15)'; else card.style.boxShadow = ''; }
         }
 
@@ -338,10 +356,21 @@
                                      </div>`;
                         } else if (card.type === 'analog' && card.mode === 'OUT') {
                             html += `<div class="w-full flex-1 flex items-center justify-center"><div id="val-out-${card.id}" class="text-6xl font-mono font-black tracking-tighter transition-colors duration-200" style="color: rgb(100, 116, 139); text-shadow: 0px 4px 15px rgba(0,0,0,0.5);">0</div></div>
-                                     <input type="range" id="slider-${card.id}" min="0" max="1023" value="0" oninput="updateAnalogOutUI('${card.id}', this.value); sendRemoteCommand('${card.id}:'+this.value);" class="w-full mb-3 mt-auto">
+                                     <input type="range" id="slider-${card.id}" min="0" max="1023" value="0" oninput="if(!this.disabled) { updateAnalogOutUI('${card.id}', this.value); sendRemoteCommand('${card.id}:'+this.value); }" class="w-full mb-3 mt-auto">
                                      <div class="flex justify-between w-full text-xs text-slate-500 font-mono tracking-widest"><span>0</span><span>1023</span></div>`;
                         } else if (card.type === 'digital' && card.mode === 'IN') {
-                            html += `<div id="val-${card.id}" class="w-28 h-28 rounded-full flex items-center justify-center text-3xl font-bold tracking-widest transition-all duration-300 border-[4px] shadow-2xl">LOW</div>`;
+                            let textVal = card.val === 1 ? (card.labelHigh || 'HIGH') : (card.labelLow || 'LOW');
+                            html += `<div id="val-${card.id}" class="w-28 h-28 rounded-full flex items-center justify-center text-xl font-bold tracking-wider transition-all duration-300 border-[4px] shadow-2xl mb-4 text-center leading-tight px-2 break-words">${textVal}</div>
+                                     <div class="flex gap-4 w-full mt-auto">
+                                         <div class="flex-1 flex flex-col gap-1.5">
+                                             <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">LOW TEXT</label>
+                                             <input type="text" id="label-low-${card.id}" value="${card.labelLow || 'LOW'}" readonly class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-emerald-400 shadow-inner">
+                                         </div>
+                                         <div class="flex-1 flex flex-col gap-1.5">
+                                             <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">HIGH TEXT</label>
+                                             <input type="text" id="label-high-${card.id}" value="${card.labelHigh || 'HIGH'}" readonly class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-emerald-400 shadow-inner">
+                                         </div>
+                                     </div>`;
                         } else if (card.type === 'digital' && card.mode === 'OUT') {
                             html += `<div class="flex-1 flex items-center justify-center w-full"><div id="val-out-${card.id}" class="w-24 h-24 rounded-2xl transition-all duration-300 border-[3px] shadow-2xl"></div></div>
                                      <div class="flex gap-3 w-full mt-auto">
