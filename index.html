@@ -51,10 +51,10 @@
         </div>
         <div class="flex flex-wrap gap-3 justify-center">
             <button id="btn-mute" onclick="toggleMute()" class="active:scale-[0.97] transition-all bg-slate-700/90 hover:bg-slate-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg border border-slate-600/50 flex items-center justify-center gap-2">🔊 SOUND ON</button>
-            <button id="btnConnect" onclick="connectBluetooth()" class="active:scale-[0.97] transition-all bg-blue-600/90 hover:bg-blue-500 text-white font-bold py-2.5 px-5 rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.4)] border border-blue-500/50 flex items-center gap-2">Connect</button>
-            <button id="btn-edit" onclick="toggleEditMode()" class="active:scale-[0.97] transition-all bg-slate-700/90 hover:bg-slate-600 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg border border-slate-600/50 min-w-[140px] flex items-center justify-center gap-2">Edit Layout</button>
-            <button id="btn-cloud" onclick="toggleCloud()" class="active:scale-[0.97] transition-all bg-purple-600/90 hover:bg-purple-500 text-white font-bold py-2.5 px-5 rounded-xl shadow-[0_0_15px_rgba(147,51,234,0.4)] border border-purple-500/50 min-w-[140px] flex items-center justify-center gap-2">Go Public</button>
-            <button id="btn-clear" onclick="clearDashboard()" class="active:scale-[0.97] transition-all bg-red-900/80 hover:bg-red-800 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg border border-red-800/50 flex items-center gap-2">Clear</button>
+            <button id="btnConnect" onclick="connectBluetooth()" class="active:scale-[0.97] transition-all bg-blue-600/90 hover:bg-blue-500 text-white font-bold py-2.5 px-5 rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.4)] border border-blue-500/50 flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> Connect</button>
+            <button id="btn-edit" onclick="toggleEditMode()" class="active:scale-[0.97] transition-all bg-slate-700/90 hover:bg-slate-600 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg border border-slate-600/50 min-w-[140px] flex items-center justify-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg> Edit Layout</button>
+            <button id="btn-cloud" onclick="toggleCloud()" class="active:scale-[0.97] transition-all bg-purple-600/90 hover:bg-purple-500 text-white font-bold py-2.5 px-5 rounded-xl shadow-[0_0_15px_rgba(147,51,234,0.4)] border border-purple-500/50 min-w-[140px] flex items-center justify-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg> Go Public</button>
+            <button id="btn-clear" onclick="clearDashboard()" class="active:scale-[0.97] transition-all bg-red-900/80 hover:bg-red-800 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg border border-red-800/50 flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg> Clear</button>
         </div>
     </header>
 
@@ -62,7 +62,7 @@
         <div class="bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-slate-700/50 shadow-2xl flex flex-col mb-2 overflow-hidden">
             <div class="p-3 border-b border-slate-700/50 flex justify-between items-center bg-black/20">
                 <div class="flex items-center gap-2">
-                    <h3 class="text-sm font-bold text-slate-300 flex items-center gap-2 uppercase tracking-wide">System Terminal</h3>
+                    <h3 class="text-sm font-bold text-slate-300 flex items-center gap-2 uppercase tracking-wide"><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> System Terminal</h3>
                     <button id="vis-btn-terminal" onclick="toggleVisibility('terminal')" class="ml-2 text-[10px] border px-2 py-0.5 rounded cursor-pointer hover:bg-slate-700 transition-colors bg-blue-900/30 text-blue-400 border-blue-700/50">👁️ VISIBLE</button>
                 </div>
                 <button onclick="document.getElementById('terminal-output').innerHTML='<div class=\'text-slate-600 italic\'>Logs cleared.</div>'" class="active:scale-95 text-[10px] font-bold bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded text-slate-400 transition-colors border border-slate-600">CLEAR</button>
@@ -121,9 +121,7 @@
                 btn.innerHTML = "🔇 MUTED";
                 btn.classList.replace("bg-slate-700/90", "bg-red-900/80");
                 btn.classList.replace("border-slate-600/50", "border-red-800/50");
-                for (let id in audioPlayers) {
-                    if (audioPlayers[id]) { audioPlayers[id].pause(); audioPlayers[id].currentTime = 0; }
-                }
+                for (let id in audioPlayers) { if (audioPlayers[id]) { audioPlayers[id].pause(); audioPlayers[id].currentTime = 0; } }
             } else {
                 btn.innerHTML = "🔊 SOUND ON";
                 btn.classList.replace("bg-red-900/80", "bg-slate-700/90");
@@ -131,7 +129,6 @@
             }
         }
 
-        // --- RESTORED LAYOUT FUNCTIONS ---
         function changeCardSize(id, delta) {
             let card = document.getElementById(`card-${id}`);
             if (!card) return;
@@ -160,11 +157,25 @@
         
         function saveCustomLabels() { 
             let labels = JSON.parse(localStorage.getItem('makerlink_labels') || '{}'); 
-            document.querySelectorAll('.ui-editable, .ui-btn-editable, .ui-editable-num').forEach(el => { if(el.id) labels[el.id] = el.value; }); 
+            document.querySelectorAll('.ui-editable, .ui-btn-editable, .ui-editable-num').forEach(el => { 
+                if(el.id) {
+                    if (el.tagName === 'BUTTON') labels[el.id] = el.innerText.trim();
+                    else labels[el.id] = el.value.trim();
+                }
+            }); 
             localStorage.setItem('makerlink_labels', JSON.stringify(labels)); 
         }
 
-        function applyCustomLabels() { let labels = JSON.parse(localStorage.getItem('makerlink_labels') || '{}'); for(let id in labels) { let el = document.getElementById(id); if(el) { el.value = labels[id]; if (el.onchange) el.onchange(); } } }
+        function applyCustomLabels() { 
+            let labels = JSON.parse(localStorage.getItem('makerlink_labels') || '{}'); 
+            for(let id in labels) { 
+                let el = document.getElementById(id); 
+                if(el) { 
+                    if (el.tagName === 'BUTTON') el.innerText = labels[id];
+                    else el.value = labels[id]; 
+                } 
+            } 
+        }
         
         function applySavedLayout() { 
             const saved = JSON.parse(localStorage.getItem('makerlink_layout') || '[]'); 
@@ -178,7 +189,48 @@
                 } 
             }); 
         }
-        // ---------------------------------
+
+        function toggleEditMode() {
+            isEditMode = !isEditMode; sortable.option("disabled", !isEditMode); const btn = document.getElementById('btn-edit');
+            if (isEditMode) {
+                document.body.classList.add('is-editing'); 
+                btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg> Save Layout`; 
+                btn.className = "active:scale-[0.97] transition-all bg-yellow-500/90 hover:bg-yellow-400 text-yellow-950 font-bold py-2.5 px-5 rounded-xl shadow-[0_0_15px_rgba(234,179,8,0.5)] border border-yellow-400 min-w-[140px] flex items-center justify-center gap-2";
+                document.querySelectorAll('select').forEach(el => { el.disabled = false; });
+                
+                // MAKE BUTTONS EDITABLE
+                document.querySelectorAll('.ui-editable, .ui-btn-editable, .ui-editable-num').forEach(el => { 
+                    if (el.tagName === 'BUTTON') {
+                        el.contentEditable = "true";
+                    } else if (el.tagName !== 'SELECT') { 
+                        el.removeAttribute('readonly'); 
+                    } 
+                    if(el.classList.contains('ui-btn-editable') || el.classList.contains('ui-editable-num') || el.tagName === 'BUTTON') { 
+                        el.classList.remove('cursor-pointer'); 
+                        el.classList.add('cursor-text', 'border-yellow-400/80', 'border-dashed', 'bg-yellow-900/40'); 
+                    } 
+                });
+            } else {
+                document.body.classList.remove('is-editing'); 
+                btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg> Edit Layout`; 
+                btn.className = "active:scale-[0.97] transition-all bg-slate-700/90 hover:bg-slate-600 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg border border-slate-600/50 min-w-[140px] flex items-center justify-center gap-2";
+                document.querySelectorAll('select').forEach(el => { el.disabled = true; });
+                
+                // LOCK BUTTONS
+                document.querySelectorAll('.ui-editable, .ui-btn-editable, .ui-editable-num').forEach(el => { 
+                    if (el.tagName === 'BUTTON') {
+                        el.contentEditable = "false";
+                    } else if (el.tagName !== 'SELECT') { 
+                        el.setAttribute('readonly', true); 
+                    } 
+                    if(el.classList.contains('ui-btn-editable') || el.classList.contains('ui-editable-num') || el.tagName === 'BUTTON') { 
+                        el.classList.add('cursor-pointer'); 
+                        el.classList.remove('cursor-text', 'border-yellow-400/80', 'border-dashed', 'bg-yellow-900/40'); 
+                    } 
+                });
+                saveCustomLabels(); saveLayoutOrder(); 
+            }
+        }
 
         function pingBluetooth() {
             const p = document.getElementById('ping-indicator');
@@ -216,24 +268,6 @@
                 else { btn.innerText = "🙈 HIDDEN"; btn.className = "ml-2 text-[9px] font-bold tracking-wider border px-2 py-0.5 rounded cursor-pointer hover:opacity-80 transition-colors bg-slate-800/50 text-slate-400 border-slate-600/50"; }
             }
             localStorage.setItem('makerlink_vis', JSON.stringify(cardVisibility)); if (isCloudActive) syncCloud();
-        }
-
-        function toggleEditMode() {
-            isEditMode = !isEditMode; sortable.option("disabled", !isEditMode); const btn = document.getElementById('btn-edit');
-            if (isEditMode) {
-                document.body.classList.add('is-editing'); 
-                btn.innerHTML = `Save Layout`; 
-                btn.className = "active:scale-[0.97] transition-all bg-yellow-500/90 hover:bg-yellow-400 text-yellow-950 font-bold py-2.5 px-5 rounded-xl shadow-[0_0_15px_rgba(234,179,8,0.5)] border border-yellow-400 min-w-[140px] flex items-center justify-center gap-2";
-                document.querySelectorAll('select').forEach(el => { el.disabled = false; });
-                document.querySelectorAll('.ui-editable, .ui-btn-editable, .ui-editable-num').forEach(el => { if(el.tagName !== 'SELECT' && el.tagName !== 'BUTTON') { el.removeAttribute('readonly'); } if(el.classList.contains('ui-btn-editable') || el.classList.contains('ui-editable-num')) { el.classList.remove('cursor-pointer'); el.classList.add('cursor-text', 'border-yellow-400/80', 'border-dashed', 'bg-yellow-900/20'); } });
-            } else {
-                document.body.classList.remove('is-editing'); 
-                btn.innerHTML = `Edit Layout`; 
-                btn.className = "active:scale-[0.97] transition-all bg-slate-700/90 hover:bg-slate-600 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg border border-slate-600/50 min-w-[140px] flex items-center justify-center gap-2";
-                document.querySelectorAll('select').forEach(el => { el.disabled = true; });
-                document.querySelectorAll('.ui-editable, .ui-btn-editable, .ui-editable-num').forEach(el => { if(el.tagName !== 'SELECT' && el.tagName !== 'BUTTON') { el.setAttribute('readonly', true); } if(el.classList.contains('ui-btn-editable') || el.classList.contains('ui-editable-num')) { el.classList.add('cursor-pointer'); el.classList.remove('cursor-text', 'border-yellow-400/80', 'border-dashed', 'bg-yellow-900/20'); } });
-                saveCustomLabels(); saveLayoutOrder(); 
-            }
         }
 
         function clearDashboard() { 
@@ -473,7 +507,7 @@
                              <button id="btn-stop-${id}" onclick="if(!isEditMode) stopRemoteAudio('${id}')" class="w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">⏹️ STOP ALARM</button>`;
                 }
 
-                html += `</div><div class="p-3 bg-black/20 border-t ${borderTheme} rounded-b-2xl flex justify-center"><input type="text" id="title-${id}" value="Custom Label" readonly class="ui-editable font-bold text-xs tracking-widest text-slate-400 uppercase bg-transparent border-none outline-none focus:ring-1 focus:ring-slate-500 rounded-md w-full text-center placeholder-slate-600 cursor-pointer truncate" placeholder="NAME THIS CARD..."></div>`;
+                html += `</div><div class="p-3 bg-black/20 border-t ${borderTheme} rounded-b-2xl flex justify-center"><input type="text" id="title-${id}" value="Custom Label" class="ui-editable w-full font-bold text-xs tracking-widest text-slate-400 uppercase bg-transparent border-none outline-none focus:ring-1 focus:ring-slate-500 rounded-md text-center placeholder-slate-600 cursor-pointer truncate" placeholder="NAME THIS CARD..." readonly></div>`;
 
                 card.innerHTML = html; gridEl.appendChild(card);
                 
@@ -667,11 +701,31 @@
                             let d2 = document.getElementById(`pos2-val-display-${id}`);
                             cardData.pos1Val = d1 ? (Number(d1.innerText) || 0) : 0; 
                             cardData.pos2Val = d2 ? (Number(d2.innerText) || 180) : 180;
+                            
+                            let btnP1 = document.getElementById(`btn-pos1-${id}`);
+                            let btnP2 = document.getElementById(`btn-pos2-${id}`);
+                            cardData.btnPos1 = btnP1 ? String(btnP1.innerText) : "POS 1";
+                            cardData.btnPos2 = btnP2 ? String(btnP2.innerText) : "POS 2";
                         } else if (info.type === 'motor') {
                             let cwSpd = document.getElementById(`cw-spd-${id}`);
                             let ccwSpd = document.getElementById(`ccw-spd-${id}`);
                             cardData.cwSpd = cwSpd ? (Number(cwSpd.value) || 255) : 255; 
                             cardData.ccwSpd = ccwSpd ? (Number(ccwSpd.value) || 255) : 255;
+                            
+                            let bCw = document.getElementById(`btn-cw-${id}`);
+                            let bCcw = document.getElementById(`btn-ccw-${id}`);
+                            let bStop = document.getElementById(`btn-stop-${id}`);
+                            cardData.btnCw = bCw ? String(bCw.innerText) : "CW ⏩";
+                            cardData.btnCcw = bCcw ? String(bCcw.innerText) : "⏪ CCW";
+                            cardData.btnStop = bStop ? String(bStop.innerText) : "⏹️ STOP";
+                        } else if (info.type === 'digital' && info.mode === 'OUT') {
+                            let bOn = document.getElementById(`btn-on-${id}`);
+                            let bOff = document.getElementById(`btn-off-${id}`);
+                            cardData.btnOn = bOn ? String(bOn.innerText) : "ON";
+                            cardData.btnOff = bOff ? String(bOff.innerText) : "OFF";
+                        } else if (info.type === 'digital' && info.mode === 'PUSH') {
+                            let bPush = document.getElementById(`btn-push-${id}`);
+                            cardData.btnPush = bPush ? String(bPush.innerText) : "HOLD";
                         }
                         
                         payload.push(JSON.parse(JSON.stringify(cardData)));
