@@ -336,6 +336,32 @@
         }
 
         function updateVal(id, val) { let valEl = document.getElementById(`val-${id}`); if(valEl) valEl.innerText = val + (id.startsWith('S') ? '°' : ''); advancedData[id] = Number(val) || val; }
+        
+        function updateTextUI(id, val) {
+            let container = document.getElementById(`text-container-${id}`);
+            if(!container) return;
+            
+            let span = document.createElement('span');
+            span.className = "text-3xl font-bold tracking-tight whitespace-nowrap invisible absolute";
+            span.innerText = val;
+            document.body.appendChild(span);
+            let isLong = span.offsetWidth > (container.clientWidth - 32); 
+            document.body.removeChild(span);
+
+            if (isLong) {
+                container.innerHTML = `<marquee id="val-${id}" scrollamount="5" class="w-full text-3xl font-bold tracking-tight text-pink-400 drop-shadow-md">${escapeHTML(val)}</marquee>`;
+            } else {
+                container.innerHTML = `<div id="val-${id}" class="w-full text-center text-3xl font-bold tracking-tight text-pink-400 drop-shadow-md truncate">${escapeHTML(val)}</div>`;
+            }
+        }
+
+        function sendTextMessage(id) {
+            let el = document.getElementById(`text-input-${id}`);
+            if(el && el.value.trim() !== '') {
+                sendBluetoothCommand(`${id}:${el.value}`);
+                el.value = ''; 
+            }
+        }
 
         function stopRemoteAudio(id) {
             sendBluetoothCommand(`${id}:STOP`);
@@ -437,7 +463,7 @@
                 let visClass = cardVisibility[id] !== false ? "bg-blue-900/40 text-blue-400 border-blue-700/50" : "bg-slate-800/50 text-slate-400 border-slate-600/50";
                 headerBtnsHTML += `<button id="vis-btn-${id}" onclick="toggleVisibility('${id}')" class="ml-2 text-[9px] font-bold tracking-wider border px-2 py-0.5 rounded cursor-pointer hover:opacity-80 transition-colors ${visClass}" title="Toggle Public Visibility">${visLabel}</button>`;
 
-                let html = `<div class="p-3 border-b ${borderTheme} flex justify-between items-center bg-black/20 rounded-t-2xl"><div class="flex items-center gap-2"><span class="font-bold text-sm tracking-wide ${colorClass}">${id}</span><span class="text-[10px] font-bold tracking-wider bg-black/40 px-2 py-0.5 rounded text-slate-400 border border-slate-700/50 flex items-center gap-1">${iconStr} ${mode ? mode : type.toUpperCase()}</span></div><div class="flex items-center">${headerBtnsHTML}</div></div><div class="p-5 flex-1 min-h-0 flex flex-col items-center justify-center bg-transparent overflow-hidden">`;
+                let html = `<div class="p-3 border-b ${borderTheme} flex justify-between items-center bg-black/20 rounded-t-2xl"><div class="flex items-center gap-2"><span class="font-bold text-sm tracking-wide ${colorClass}">${id}</span><span class="text-[10px] font-bold tracking-wider bg-black/40 px-2 py-0.5 rounded text-slate-400 border border-slate-700/50 flex items-center gap-1">${iconStr} ${mode ? mode : type.toUpperCase()}</span></div><div class="p-5 flex-1 min-h-0 flex flex-col items-center justify-center bg-transparent overflow-hidden">`;
 
                 if (type === 'analog' && mode === 'IN') {
                     html += `<div class="w-full flex-1 relative min-h-[120px] bg-black/20 rounded-xl border border-slate-700/50 mb-4 flex items-center justify-center overflow-hidden">
@@ -445,8 +471,8 @@
                                  <canvas id="chart-${id}" class="absolute inset-0 w-full h-full opacity-70"></canvas>
                              </div>
                              <div class="flex gap-3 w-full mt-auto">
-                                <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MIN</label><input type="number" id="ymin-${id}" value="" placeholder="Auto" readonly onchange="updateChartConfig('${id}')" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
-                                <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MAX</label><input type="number" id="ymax-${id}" value="" placeholder="Auto" readonly onchange="updateChartConfig('${id}')" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
+                                <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MIN</label><input type="number" id="ymin-${id}" value="" placeholder="Auto" readonly onchange="updateChartConfig('${id}')" class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
+                                <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MAX</label><input type="number" id="ymax-${id}" value="" placeholder="Auto" readonly onchange="updateChartConfig('${id}')" class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
                                 <div class="flex-1 flex flex-col">
                                     <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">TIME</label>
                                     <select id="time-${id}" disabled onchange="updateChartConfig('${id}')" class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300 appearance-none">
@@ -507,12 +533,14 @@
                     let displayTxt = startVals && startVals[0] !== undefined ? startVals[0] : "";
                     html += `<div class="flex-1 flex flex-col justify-center w-full gap-4 mt-auto">
                                  <input type="text" id="text-input-${id}" value="${displayTxt}" class="w-full bg-black/40 border border-slate-700/50 rounded-xl px-4 py-4 text-center text-lg font-mono text-pink-400 shadow-inner focus:outline-none focus:border-pink-500 placeholder-slate-600 transition-colors" placeholder="TYPE MESSAGE...">
-                                 <button id="btn-send-${id}" onclick="if(!isEditMode && !this.disabled) { sendBluetoothCommand('${id}:' + document.getElementById('text-input-${id}').value); }" class="ui-btn-editable w-full bg-pink-600/90 hover:bg-pink-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(244,114,182,0.3)] active:scale-[0.97] transition-all border border-pink-500/50 cursor-pointer text-center focus:outline-none truncate">SEND</button>
+                                 <button id="btn-send-${id}" onclick="if(!isEditMode && !this.disabled) sendTextMessage('${id}')" class="ui-btn-editable w-full bg-pink-600/90 hover:bg-pink-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(244,114,182,0.3)] active:scale-[0.97] transition-all border border-pink-500/50 cursor-pointer text-center focus:outline-none truncate">SEND</button>
                              </div>`;
                 }
                 else if (type === 'text') {
                     let displayTxt = startVals && startVals[0] !== undefined ? startVals[0] : "";
-                    html += `<div class="w-full h-full overflow-y-auto custom-scrollbar flex p-4 bg-black/20 rounded-xl border border-slate-700/50"><div id="val-${id}" class="m-auto w-full text-center text-3xl font-bold tracking-tight text-pink-400 break-words whitespace-pre-wrap drop-shadow-md">${displayTxt}</div></div>`;
+                    html += `<div class="w-full h-full flex p-4 bg-black/20 rounded-xl border border-slate-700/50 overflow-hidden items-center justify-center" id="text-container-${id}">
+                                 <div id="val-${id}" class="whitespace-nowrap text-3xl font-bold tracking-tight text-pink-400 drop-shadow-md">${displayTxt}</div>
+                             </div>`;
                 }
                 else if (type === 'motor') {
                     let mStart = startVals && startVals[0] !== undefined ? Number(startVals[0]) : 0;
@@ -526,7 +554,10 @@
                     }
 
                     html += `<div id="val-${id}" class="text-2xl font-mono text-orange-400 font-bold mb-4 w-full text-center bg-black/30 py-3 rounded-xl border border-slate-700/50 shadow-inner drop-shadow-md">${mDisplayStr}</div>
-                             <div class="flex gap-3 w-full mb-5"><div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CCW SPEED (MAX ${mCCW})</label><input type="number" id="ccw-spd-${id}" value="${mCCW}" max="${mCCW}" min="0" readonly oninput="if(parseInt(this.value) > parseInt(this.max)) this.value = this.max; if(parseInt(this.value) < 0) this.value = 0;" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div><div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CW SPEED (MAX ${mCW})</label><input type="number" id="cw-spd-${id}" value="${mCW}" max="${mCW}" min="0" readonly oninput="if(parseInt(this.value) > parseInt(this.max)) this.value = this.max; if(parseInt(this.value) < 0) this.value = 0;" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div></div>
+                             <div class="flex gap-3 w-full mb-5">
+                                 <div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CCW SPEED (MAX ${mCCW})</label><input type="number" id="ccw-spd-${id}" value="${mCCW}" max="${mCCW}" min="0" readonly oninput="if(parseInt(this.value) > parseInt(this.max)) this.value = this.max; if(parseInt(this.value) < 0) this.value = 0;" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div>
+                                 <div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CW SPEED (MAX ${mCW})</label><input type="number" id="cw-spd-${id}" value="${mCW}" max="${mCW}" min="0" readonly oninput="if(parseInt(this.value) > parseInt(this.max)) this.value = this.max; if(parseInt(this.value) < 0) this.value = 0;" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div>
+                             </div>
                              <div class="flex flex-col gap-3 w-full mt-auto">
                                  <div class="flex justify-center gap-3 w-full">
                                      <button id="btn-ccw-${id}" onclick="if(!isEditMode) setMotor('${id}', 'ccw')" class="ui-btn-editable flex-1 bg-yellow-600/90 hover:bg-yellow-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-yellow-500/50 cursor-pointer text-center focus:outline-none truncate">⏪ CCW</button>
@@ -570,13 +601,14 @@
                              <button id="btn-stop-${id}" onclick="if(!isEditMode) stopRemoteAudio('${id}')" class="ui-btn-editable w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">⏹️ STOP ALARM</button>`;
                 }
 
-                html += `</div><div class="p-3 bg-black/20 border-t ${borderTheme} rounded-b-2xl flex justify-center"><input type="text" id="title-${id}" value="Custom Label" readonly class="ui-editable w-full font-bold text-xs tracking-widest text-slate-400 uppercase bg-transparent border-none outline-none focus:ring-1 focus:ring-slate-500 rounded-md text-center placeholder-slate-600 cursor-pointer truncate" placeholder="NAME THIS CARD..."></div>`;
+                html += `</div><div class="p-3 bg-black/20 border-t ${borderTheme} rounded-b-2xl flex justify-center"><input type="text" id="title-${id}" value="Custom Label" class="ui-editable w-full font-bold text-xs tracking-widest text-slate-400 uppercase bg-transparent border-none outline-none focus:ring-1 focus:ring-slate-500 rounded-md text-center placeholder-slate-600 cursor-pointer truncate" placeholder="NAME THIS CARD..." readonly></div>`;
 
                 card.innerHTML = html; gridEl.appendChild(card);
                 
                 if (type === 'analog' && mode === 'IN') { initChart(id); if(startVals) document.getElementById(`val-${id}`).style.color = getAnalogColor(Number(startVals[0])); }
                 if (type === 'analog' && mode === 'OUT') updateAnalogOutUI(id, startVals ? startVals[0] : 0);
                 if (type === 'digital') updateDigitalUI(id, startVals ? startVals[0] : 0);
+                if (type === 'text' && mode !== 'OUT' && startVals) updateTextUI(id, startVals[0]);
 
                 applySavedLayout(); applyCustomLabels(); saveLayoutOrder(); 
             } catch (err) {
@@ -642,11 +674,7 @@
             let cardData = activeCardTypes[id]; if (!cardData) return; advancedData[id] = valStr;
 
             if (cardData.type === 'text') { 
-                if (cardData.mode === 'OUT') {
-                    let el = document.getElementById(`text-input-${id}`); if(el) el.value = valStr;
-                } else {
-                    let el = document.getElementById(`val-${id}`); if(el) el.innerText = valStr; 
-                }
+                if (cardData.mode === 'OUT') { } else { updateTextUI(id, valStr); }
             } 
             else if (cardData.type === 'audio') {
                 if (valStr.startsWith('PLAY')) {
@@ -805,8 +833,6 @@
                         } else if (info.type === 'text' && info.mode === 'OUT') {
                             let bSend = document.getElementById(`btn-send-${id}`);
                             cardData.btnSend = bSend ? String(bSend.innerText) : "SEND";
-                            let tInp = document.getElementById(`text-input-${id}`);
-                            cardData.val = tInp ? String(tInp.value) : "";
                         }
                         
                         payload.push(JSON.parse(JSON.stringify(cardData)));
