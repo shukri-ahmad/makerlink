@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MakerLink Host (Beta)</title>
+    <title>MakerLink Host</title>
     <link rel="icon" href="MakerLink Logo.jpg" type="image/jpeg">
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -46,7 +46,7 @@
                     <h1 class="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500 leading-tight tracking-tight">MakerLink Host</h1>
                     <div id="ping-indicator" class="w-3 h-3 rounded-full bg-slate-700 transition-colors duration-300" title="Bluetooth Activity"></div>
                 </div>
-                <p class="text-emerald-400/80 text-xs font-bold tracking-widest mt-1 uppercase">Beta: Telegram Edition</p>
+                <p class="text-emerald-400/80 text-xs font-bold tracking-widest mt-1 uppercase">Cyber-Physical SCADA Terminal</p>
             </div>
         </div>
         <div class="flex flex-wrap gap-3 justify-center">
@@ -71,6 +71,7 @@
                 <div class="text-slate-500 italic">Waiting for hardware SYNC...</div>
             </div>
         </div>
+
         <div id="dashboard-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-max items-start"></div>
     </div>
 
@@ -83,10 +84,13 @@
         const firebaseConfig = { apiKey: "AIzaSyAMLoInCYEYyT97RtkjW6rnT0lKTu7_xik", authDomain: "makerlink-b575b.firebaseapp.com", databaseURL: "https://makerlink-b575b-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "makerlink-b575b", storageBucket: "makerlink-b575b.firebasestorage.app" };
         firebase.initializeApp(firebaseConfig); const db = firebase.database();
 
+        // ==========================================
         // TELEGRAM BOT SETTINGS
+        // ==========================================
         const TG_TOKEN = "YOUR_BOT_TOKEN_HERE"; 
         const TG_CHAT_ID = "YOUR_CHAT_ID_HERE"; 
         let tgLastUpdateId = 0;
+        // ==========================================
 
         let isCloudActive = false, cloudRoomId = null, cloudInterval = null;
         let isEditMode = false;
@@ -99,6 +103,7 @@
         let cardVisibility = JSON.parse(localStorage.getItem('makerlink_vis') || '{}');
         
         const advancedData = {}; const sensorCharts = {}; let activeCardTypes = {}; 
+        
         const cardSizes = ['col-span-1', 'col-span-1 md:col-span-2', 'col-span-1 md:col-span-2 lg:col-span-3', 'col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4'];
         
         let bluetoothDevice, bluetoothServer, uartService, rxCharacteristic, txCharacteristic;
@@ -136,7 +141,8 @@
             if (currentSize < 0) currentSize = 0; if (currentSize >= cardSizes.length) currentSize = cardSizes.length - 1;
             card.setAttribute('data-size', currentSize);
             card.className = card.className.replace(/\b(md:|lg:|xl:)?col-span-\d\b/g, '').replace(/\s+/g, ' ').trim();
-            let newClasses = cardSizes[currentSize].split(' '); card.classList.add(...newClasses); saveLayoutOrder();
+            let newClasses = cardSizes[currentSize].split(' '); card.classList.add(...newClasses);
+            saveLayoutOrder();
         }
 
         function saveLayoutOrder() { 
@@ -266,32 +272,18 @@
 
         function updateDigitalUI(id, val) {
             let v = Number(val); advancedData[id] = v; let valIn = document.getElementById(`val-${id}`);
-            if(valIn) { 
-                valIn.innerText = v === 1 ? 'HIGH' : 'LOW'; 
-                if(v === 1) { valIn.style.backgroundColor = '#dc2626'; valIn.style.color = '#ffffff'; valIn.style.borderColor = '#f87171'; valIn.style.boxShadow = '0 0 25px rgba(220, 38, 38, 0.8)'; } 
-                else { valIn.style.backgroundColor = 'rgba(0,0,0,0.4)'; valIn.style.color = '#64748b'; valIn.style.borderColor = '#334155'; valIn.style.boxShadow = 'inset 0 4px 6px rgba(0, 0, 0, 0.6)'; } 
-            }
+            if(valIn) { valIn.innerText = v === 1 ? 'HIGH' : 'LOW'; if(v === 1) { valIn.style.backgroundColor = '#dc2626'; valIn.style.color = '#ffffff'; valIn.style.borderColor = '#f87171'; valIn.style.boxShadow = '0 0 25px rgba(220, 38, 38, 0.8)'; } else { valIn.style.backgroundColor = 'rgba(0,0,0,0.4)'; valIn.style.color = '#64748b'; valIn.style.borderColor = '#334155'; valIn.style.boxShadow = 'inset 0 4px 6px rgba(0, 0, 0, 0.6)'; } }
             let valOut = document.getElementById(`val-out-${id}`);
-            if(valOut) { 
-                if(v === 1) { valOut.style.backgroundColor = '#2563eb'; valOut.style.borderColor = '#60a5fa'; valOut.style.boxShadow = '0 0 25px rgba(37, 99, 235, 0.8)'; } 
-                else { valOut.style.backgroundColor = 'rgba(0,0,0,0.4)'; valOut.style.borderColor = '#334155'; valOut.style.boxShadow = 'inset 0 4px 6px rgba(0, 0, 0, 0.6)'; } 
-            }
+            if(valOut) { if(v === 1) { valOut.style.backgroundColor = '#2563eb'; valOut.style.borderColor = '#60a5fa'; valOut.style.boxShadow = '0 0 25px rgba(37, 99, 235, 0.8)'; } else { valOut.style.backgroundColor = 'rgba(0,0,0,0.4)'; valOut.style.borderColor = '#334155'; valOut.style.boxShadow = 'inset 0 4px 6px rgba(0, 0, 0, 0.6)'; } }
             let card = document.getElementById(`card-${id}`);
             if(card) { if(v === 1) card.style.boxShadow = '0 0 20px rgba(16, 185, 129, 0.15)'; else card.style.boxShadow = ''; }
         }
 
-        function updateAnalogOutUI(id, val) {
-            let v = Number(val); advancedData[id] = v; let elOut = document.getElementById(`val-out-${id}`);
-            if(elOut) { elOut.innerText = v; elOut.style.color = getAnalogColor(v); }
-            let sl = document.getElementById(`slider-${id}`); if(sl && sl.value != v) sl.value = v;
-        }
-
+        function updateAnalogOutUI(id, val) { let v = Number(val); advancedData[id] = v; let elOut = document.getElementById(`val-out-${id}`); if(elOut) { elOut.innerText = v; elOut.style.color = getAnalogColor(v); } let sl = document.getElementById(`slider-${id}`); if(sl && sl.value != v) sl.value = v; }
         function updateVal(id, val) { let valEl = document.getElementById(`val-${id}`); if(valEl) valEl.innerText = val + (id.startsWith('S') ? '°' : ''); advancedData[id] = Number(val) || val; }
-
         function stopRemoteAudio(id) { sendBluetoothCommand(`${id}:STOP`); parseTelemetry(`${id}:STOP`); }
         function updateVolume(id, val) { audioVolumes[id] = val; if(audioPlayers[id]) audioPlayers[id].volume = val; }
 
-        // --- FULL UI GENERATION FUNCTION ---
         function createPlayingCard(id, type, mode, startVals) {
             if(document.getElementById(`card-${id}`)) {
                 if (type === 'servo' && startVals) {
@@ -308,9 +300,10 @@
             }
             
             if(cardPermissions[id] === undefined) { let savedPerms = JSON.parse(localStorage.getItem('makerlink_perms') || '{}'); cardPermissions[id] = savedPerms[id] !== undefined ? savedPerms[id] : true; }
-
             activeCardTypes[id] = { type: type, mode: mode || "" }; 
-            advancedData[id] = startVals && startVals[0] !== undefined ? (type === 'text' ? startVals[0] : Number(startVals[0])) : (type === 'text' ? "" : (type === 'audio' ? 'STOP' : 0));
+            
+            let defaultVal = 0; if (type === 'text') defaultVal = ""; if (type === 'audio') defaultVal = "STOP";
+            advancedData[id] = (startVals && startVals[0] !== undefined) ? ((type === 'text' || type === 'audio') ? startVals[0] : (Number(startVals[0]) || 0)) : defaultVal;
             
             const card = document.createElement('div'); 
             let borderTheme = type === 'analog' ? 'border-purple-500/30' : type === 'digital' ? 'border-emerald-500/30' : type === 'motor' ? 'border-orange-500/30' : type === 'text' ? 'border-pink-500/30' : type === 'audio' ? 'border-cyan-500/30' : 'border-blue-500/30';
@@ -320,96 +313,41 @@
 
             let colorClass = type === 'analog' ? 'text-purple-400' : type === 'digital' ? 'text-emerald-400' : type === 'motor' ? 'text-orange-400' : type === 'text' ? 'text-pink-400' : type === 'audio' ? 'text-cyan-400' : 'text-blue-400';
             let iconStr = getSVGIcon(type);
-
             let isOutput = (type === 'analog' && mode === 'OUT') || (type === 'digital' && (mode === 'OUT' || mode === 'PUSH')) || type === 'motor' || type === 'servo' || type === 'audio';
             
             let headerBtnsHTML = `<div class="size-btns flex items-center bg-black/40 rounded ml-2 overflow-hidden border border-slate-700/50"><button onclick="changeCardSize('${id}', -1)" class="px-2 hover:bg-slate-700 text-xs font-bold text-slate-300">-</button><button onclick="changeCardSize('${id}', 1)" class="px-2 border-l border-slate-700/50 hover:bg-slate-700 text-xs font-bold text-slate-300">+</button></div>`;
-
             if (isOutput) {
-                let permLabel = cardPermissions[id] ? "🎮 PUBLIC" : "👁️ VIEW ONLY";
-                let permClass = cardPermissions[id] ? "bg-green-900/40 text-green-400 border-green-700/50 shadow-[0_0_8px_rgba(74,222,128,0.2)]" : "bg-red-900/40 text-red-400 border-red-700/50";
+                let permLabel = cardPermissions[id] ? "🎮 PUBLIC" : "👁️ VIEW ONLY"; let permClass = cardPermissions[id] ? "bg-green-900/40 text-green-400 border-green-700/50 shadow-[0_0_8px_rgba(74,222,128,0.2)]" : "bg-red-900/40 text-red-400 border-red-700/50";
                 headerBtnsHTML += `<button id="perm-btn-${id}" onclick="togglePermission('${id}')" class="ml-2 text-[9px] font-bold tracking-wider border px-2 py-0.5 rounded cursor-pointer hover:opacity-80 transition-opacity ${permClass}" title="Toggle Public Control">${permLabel}</button>`;
             }
-            
-            let visLabel = cardVisibility[id] !== false ? "👁️ VISIBLE" : "🙈 HIDDEN";
-            let visClass = cardVisibility[id] !== false ? "bg-blue-900/40 text-blue-400 border-blue-700/50" : "bg-slate-800/50 text-slate-400 border-slate-600/50";
+            let visLabel = cardVisibility[id] !== false ? "👁️ VISIBLE" : "🙈 HIDDEN"; let visClass = cardVisibility[id] !== false ? "bg-blue-900/40 text-blue-400 border-blue-700/50" : "bg-slate-800/50 text-slate-400 border-slate-600/50";
             headerBtnsHTML += `<button id="vis-btn-${id}" onclick="toggleVisibility('${id}')" class="ml-2 text-[9px] font-bold tracking-wider border px-2 py-0.5 rounded cursor-pointer hover:opacity-80 transition-colors ${visClass}" title="Toggle Public Visibility">${visLabel}</button>`;
 
             let html = `<div class="p-3 border-b ${borderTheme} flex justify-between items-center bg-black/20 rounded-t-2xl"><div class="flex items-center gap-2"><span class="font-bold text-sm tracking-wide ${colorClass}">${id}</span><span class="text-[10px] font-bold tracking-wider bg-black/40 px-2 py-0.5 rounded text-slate-400 border border-slate-700/50 flex items-center gap-1">${iconStr} ${mode ? mode : type.toUpperCase()}</span></div><div class="flex items-center">${headerBtnsHTML}</div></div><div class="p-5 flex-1 min-h-0 flex flex-col items-center justify-center bg-transparent overflow-hidden">`;
 
-            // FULL HTML BLOCKS: NO PLACEHOLDERS
             if (type === 'analog' && mode === 'IN') {
-                html += `<div class="w-full flex-1 relative min-h-[120px] bg-black/20 rounded-xl border border-slate-700/50 mb-4 flex items-center justify-center overflow-hidden">
-                             <div id="val-${id}" class="absolute z-10 text-6xl font-mono font-black tracking-tighter transition-colors duration-200" style="color: rgb(100, 116, 139); text-shadow: 0px 4px 20px rgba(0,0,0,1);">0</div>
-                             <canvas id="chart-${id}" class="absolute inset-0 w-full h-full opacity-70"></canvas>
-                         </div>
-                         <div class="flex gap-3 w-full mt-auto">
-                            <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MIN</label><input type="number" id="ymin-${id}" value="" placeholder="Auto" readonly onchange="updateSensorChartConfig('${id}')" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
-                            <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MAX</label><input type="number" id="ymax-${id}" value="" placeholder="Auto" readonly onchange="updateSensorChartConfig('${id}')" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
-                            <div class="flex-1 flex flex-col">
-                                <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">TIME</label>
-                                <select id="time-${id}" disabled onchange="updateSensorChartConfig('${id}')" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300 appearance-none">
-                                    <option value="0">All</option><option value="900000">15m</option><option value="3600000">1h</option><option value="14400000">4h</option>
-                                </select>
-                            </div>
-                         </div>`;
-            } 
-            else if (type === 'analog' && mode === 'OUT') {
-                html += `<div class="w-full flex-1 flex items-center justify-center">
-                             <div id="val-out-${id}" class="text-6xl font-mono font-black tracking-tighter transition-colors duration-200" style="color: rgb(100, 116, 139); text-shadow: 0px 4px 15px rgba(0,0,0,0.5);">${startVals[0]}</div>
-                         </div>
-                         <input type="range" id="slider-${id}" min="0" max="1023" value="${startVals[0]}" oninput="updateAnalogOutUI('${id}', this.value); sendBluetoothCommand('${id}:'+this.value);" class="w-full mb-3 mt-auto">
-                         <div class="flex justify-between w-full text-xs text-slate-500 font-mono tracking-widest"><span>0</span><span>1023</span></div>`;
-            } 
-            else if (type === 'digital' && mode === 'IN') {
+                html += `<div class="w-full flex-1 relative min-h-[120px] bg-black/20 rounded-xl border border-slate-700/50 mb-4 flex items-center justify-center overflow-hidden"><div id="val-${id}" class="absolute z-10 text-6xl font-mono font-black tracking-tighter transition-colors duration-200" style="color: rgb(100, 116, 139); text-shadow: 0px 4px 20px rgba(0,0,0,1);">0</div><canvas id="chart-${id}" class="absolute inset-0 w-full h-full opacity-70"></canvas></div><div class="flex gap-3 w-full mt-auto"><div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MIN</label><input type="number" id="ymin-${id}" value="" placeholder="Auto" readonly onchange="updateSensorChartConfig('${id}')" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div><div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MAX</label><input type="number" id="ymax-${id}" value="" placeholder="Auto" readonly onchange="updateSensorChartConfig('${id}')" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div><div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">TIME</label><select id="time-${id}" disabled onchange="updateSensorChartConfig('${id}')" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300 appearance-none"><option value="0">All</option><option value="900000">15m</option><option value="3600000">1h</option><option value="14400000">4h</option></select></div></div>`;
+            } else if (type === 'analog' && mode === 'OUT') {
+                html += `<div class="w-full flex-1 flex items-center justify-center"><div id="val-out-${id}" class="text-6xl font-mono font-black tracking-tighter transition-colors duration-200" style="color: rgb(100, 116, 139); text-shadow: 0px 4px 15px rgba(0,0,0,0.5);">${startVals[0]}</div></div><input type="range" id="slider-${id}" min="0" max="1023" value="${startVals[0]}" oninput="updateAnalogOutUI('${id}', this.value); sendBluetoothCommand('${id}:'+this.value);" class="w-full mb-3 mt-auto"><div class="flex justify-between w-full text-xs text-slate-500 font-mono tracking-widest"><span>0</span><span>1023</span></div>`;
+            } else if (type === 'digital' && mode === 'IN') {
                 html += `<div id="val-${id}" class="w-28 h-28 rounded-full flex items-center justify-center text-3xl font-bold tracking-widest transition-all duration-300 border-[4px] shadow-2xl">LOW</div>`;
-            } 
-            else if (type === 'digital' && mode === 'OUT') {
-                html += `<div class="flex-1 flex items-center justify-center w-full"><div id="val-out-${id}" class="w-24 h-24 rounded-2xl transition-all duration-300 border-[3px] shadow-2xl"></div></div>
-                         <div class="flex gap-3 w-full mt-auto">
-                             <input type="text" id="btn-off-${id}" value="OFF" readonly onclick="if(!isEditMode) { sendBluetoothCommand('${id}:0'); updateDigitalUI('${id}', 0); }" class="ui-btn-editable flex-1 py-3 px-2 bg-slate-800/80 hover:bg-slate-700/80 rounded-xl text-slate-400 font-bold tracking-widest text-sm shadow-lg active:scale-[0.97] transition-all border border-slate-700/50 text-center cursor-pointer focus:outline-none truncate">
-                             <input type="text" id="btn-on-${id}" value="ON" readonly onclick="if(!isEditMode) { sendBluetoothCommand('${id}:1'); updateDigitalUI('${id}', 1); }" class="ui-btn-editable flex-1 py-3 px-2 bg-red-600/90 hover:bg-red-500/90 rounded-xl text-white font-bold tracking-widest text-sm shadow-[0_0_15px_rgba(220,38,38,0.4)] active:scale-[0.97] transition-all border border-red-500/50 text-center cursor-pointer focus:outline-none truncate">
-                         </div>`;
-            }
-            else if (type === 'digital' && mode === 'PUSH') {
-                html += `<div class="flex-1 flex items-center justify-center w-full"><div id="val-out-${id}" class="w-24 h-24 rounded-full transition-all duration-300 border-[3px] shadow-2xl"></div></div>
-                         <div class="flex w-full mt-auto">
-                             <input type="text" id="btn-push-${id}" value="HOLD" readonly onmousedown="if(!isEditMode) { sendBluetoothCommand('${id}:1'); updateDigitalUI('${id}', 1); }" onmouseup="if(!isEditMode) { sendBluetoothCommand('${id}:0'); updateDigitalUI('${id}', 0); }" onmouseleave="if(!isEditMode && advancedData['${id}'] == 1) { sendBluetoothCommand('${id}:0'); updateDigitalUI('${id}', 0); }" ontouchstart="if(!isEditMode) { sendBluetoothCommand('${id}:1'); updateDigitalUI('${id}', 1); }" ontouchend="if(!isEditMode) { sendBluetoothCommand('${id}:0'); updateDigitalUI('${id}', 0); }" class="ui-btn-editable w-full py-4 px-2 bg-purple-600/90 hover:bg-purple-500/90 rounded-xl text-white font-bold tracking-widest text-lg shadow-[0_0_20px_rgba(147,51,234,0.4)] active:scale-[0.97] transition-all border border-purple-500/50 text-center cursor-pointer focus:outline-none truncate select-none">
-                         </div>`;
-            } 
-            else if (type === 'text') {
+            } else if (type === 'digital' && mode === 'OUT') {
+                html += `<div class="flex-1 flex items-center justify-center w-full"><div id="val-out-${id}" class="w-24 h-24 rounded-2xl transition-all duration-300 border-[3px] shadow-2xl"></div></div><div class="flex gap-3 w-full mt-auto"><input type="text" id="btn-off-${id}" value="OFF" readonly onclick="if(!isEditMode) { sendBluetoothCommand('${id}:0'); updateDigitalUI('${id}', 0); }" class="ui-btn-editable flex-1 py-3 px-2 bg-slate-800/80 hover:bg-slate-700/80 rounded-xl text-slate-400 font-bold tracking-widest text-sm shadow-lg active:scale-[0.97] transition-all border border-slate-700/50 text-center cursor-pointer focus:outline-none truncate"><input type="text" id="btn-on-${id}" value="ON" readonly onclick="if(!isEditMode) { sendBluetoothCommand('${id}:1'); updateDigitalUI('${id}', 1); }" class="ui-btn-editable flex-1 py-3 px-2 bg-red-600/90 hover:bg-red-500/90 rounded-xl text-white font-bold tracking-widest text-sm shadow-[0_0_15px_rgba(220,38,38,0.4)] active:scale-[0.97] transition-all border border-red-500/50 text-center cursor-pointer focus:outline-none truncate"></div>`;
+            } else if (type === 'digital' && mode === 'PUSH') {
+                html += `<div class="flex-1 flex items-center justify-center w-full"><div id="val-out-${id}" class="w-24 h-24 rounded-full transition-all duration-300 border-[3px] shadow-2xl"></div></div><div class="flex w-full mt-auto"><input type="text" id="btn-push-${id}" value="HOLD" readonly onmousedown="if(!isEditMode) { sendBluetoothCommand('${id}:1'); updateDigitalUI('${id}', 1); }" onmouseup="if(!isEditMode) { sendBluetoothCommand('${id}:0'); updateDigitalUI('${id}', 0); }" onmouseleave="if(!isEditMode && advancedData['${id}'] == 1) { sendBluetoothCommand('${id}:0'); updateDigitalUI('${id}', 0); }" ontouchstart="if(!isEditMode) { sendBluetoothCommand('${id}:1'); updateDigitalUI('${id}', 1); }" ontouchend="if(!isEditMode) { sendBluetoothCommand('${id}:0'); updateDigitalUI('${id}', 0); }" class="ui-btn-editable w-full py-4 px-2 bg-purple-600/90 hover:bg-purple-500/90 rounded-xl text-white font-bold tracking-widest text-lg shadow-[0_0_20px_rgba(147,51,234,0.4)] active:scale-[0.97] transition-all border border-purple-500/50 text-center cursor-pointer focus:outline-none truncate select-none"></div>`;
+            } else if (type === 'text') {
                 let displayTxt = startVals && startVals[0] !== undefined ? startVals[0] : "";
                 html += `<div class="w-full h-full overflow-y-auto custom-scrollbar flex p-4 bg-black/20 rounded-xl border border-slate-700/50"><div id="val-${id}" class="m-auto w-full text-center text-3xl font-bold tracking-tight text-pink-400 break-words whitespace-pre-wrap drop-shadow-md">${displayTxt}</div></div>`;
-            }
-            else if (type === 'motor') {
+            } else if (type === 'motor') {
                 let mStart = startVals && startVals[0] !== undefined ? Number(startVals[0]) : 0; let mCW = startVals && startVals[1] !== undefined ? startVals[1] : 255; let mCCW = startVals && startVals[2] !== undefined ? startVals[2] : 255;
                 let mDisplayStr = 'STOP (0)'; if (mStart !== 0) { if (id === 'M1' || id === 'M2') mDisplayStr = mStart < 0 ? `CW (${Math.abs(mStart)})` : `CCW (${Math.abs(mStart)})`; else mDisplayStr = mStart > 0 ? `CW (${Math.abs(mStart)})` : `CCW (${Math.abs(mStart)})`; }
-                html += `<div id="val-${id}" class="text-2xl font-mono text-orange-400 font-bold mb-4 w-full text-center bg-black/30 py-3 rounded-xl border border-slate-700/50 shadow-inner drop-shadow-md">${mDisplayStr}</div>
-                         <div class="flex gap-3 w-full mb-5"><div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CCW SPEED</label><input type="number" id="ccw-spd-${id}" value="${mCCW}" readonly class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div><div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CW SPEED</label><input type="number" id="cw-spd-${id}" value="${mCW}" readonly class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div></div>
-                         <div class="flex flex-col gap-3 w-full mt-auto">
-                             <div class="flex justify-center gap-3 w-full"><input type="text" id="btn-ccw-${id}" value="⏪ CCW" readonly onclick="if(!isEditMode) setMotor('${id}', 'ccw')" class="ui-btn-editable flex-1 bg-yellow-600/90 hover:bg-yellow-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-yellow-500/50 cursor-pointer text-center focus:outline-none truncate"><input type="text" id="btn-cw-${id}" value="CW ⏩" readonly onclick="if(!isEditMode) setMotor('${id}', 'cw')" class="ui-btn-editable flex-1 bg-green-600/90 hover:bg-green-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-green-500/50 cursor-pointer text-center focus:outline-none truncate"></div>
-                             <input type="text" id="btn-stop-${id}" value="⏹️ STOP" readonly onclick="if(!isEditMode) setMotor('${id}', 'stop')" class="ui-btn-editable w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">
-                         </div>`;
-            } 
-            else if (type === 'servo') {
+                html += `<div id="val-${id}" class="text-2xl font-mono text-orange-400 font-bold mb-4 w-full text-center bg-black/30 py-3 rounded-xl border border-slate-700/50 shadow-inner drop-shadow-md">${mDisplayStr}</div><div class="flex gap-3 w-full mb-5"><div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CCW SPEED</label><input type="number" id="ccw-spd-${id}" value="${mCCW}" readonly class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div><div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CW SPEED</label><input type="number" id="cw-spd-${id}" value="${mCW}" readonly class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div></div><div class="flex flex-col gap-3 w-full mt-auto"><div class="flex justify-center gap-3 w-full"><input type="text" id="btn-ccw-${id}" value="⏪ CCW" readonly onclick="if(!isEditMode) setMotor('${id}', 'ccw')" class="ui-btn-editable flex-1 bg-yellow-600/90 hover:bg-yellow-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-yellow-500/50 cursor-pointer text-center focus:outline-none truncate"><input type="text" id="btn-cw-${id}" value="CW ⏩" readonly onclick="if(!isEditMode) setMotor('${id}', 'cw')" class="ui-btn-editable flex-1 bg-green-600/90 hover:bg-green-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-green-500/50 cursor-pointer text-center focus:outline-none truncate"></div><input type="text" id="btn-stop-${id}" value="⏹️ STOP" readonly onclick="if(!isEditMode) setMotor('${id}', 'stop')" class="ui-btn-editable w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate"></div>`;
+            } else if (type === 'servo') {
                 let p1 = startVals[1] !== undefined ? parseInt(startVals[1]) : 0; let p2 = startVals[2] !== undefined ? parseInt(startVals[2]) : 180;
-                let minBound = Math.min(p1, p2); let maxBound = Math.max(p1, p2);
-                let sVal = startVals[0] !== undefined ? parseInt(startVals[0]) : 90; sVal = Math.max(minBound, Math.min(maxBound, sVal));
-                html += `<div id="val-${id}" class="text-6xl font-mono text-blue-400 font-black tracking-tighter drop-shadow-[0_0_15px_rgba(96,165,250,0.5)] mb-6 mt-auto">${sVal}°</div>
-                         <input type="range" id="slider-${id}" min="${minBound}" max="${maxBound}" value="${sVal}" oninput="updateVal('${id}', this.value); sendBluetoothCommand('${id}:'+this.value);" class="w-full mb-6 mt-auto">
-                         <div class="flex gap-4 w-full mt-auto">
-                             <div class="flex-1 flex flex-col gap-1.5"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">LIMIT 1</label><div class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-blue-400 shadow-inner mb-1" id="pos1-val-display-${id}">${p1}</div><input type="text" id="btn-pos1-${id}" value="POS 1" readonly onclick="if(!isEditMode) setServoPos('${id}', 1)" class="ui-btn-editable w-full bg-blue-600/90 hover:bg-blue-500/90 text-white tracking-wider text-xs font-bold py-2 px-1 rounded-xl shadow-[0_0_12px_rgba(37,99,235,0.4)] active:scale-[0.97] transition-all border border-blue-500/50 cursor-pointer text-center focus:outline-none truncate mt-1"></div>
-                             <div class="flex-1 flex flex-col gap-1.5"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">LIMIT 2</label><div class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-blue-400 shadow-inner mb-1" id="pos2-val-display-${id}">${p2}</div><input type="text" id="btn-pos2-${id}" value="POS 2" readonly onclick="if(!isEditMode) setServoPos('${id}', 2)" class="ui-btn-editable w-full bg-blue-600/90 hover:bg-blue-500/90 text-white tracking-wider text-xs font-bold py-2 px-1 rounded-xl shadow-[0_0_12px_rgba(37,99,235,0.4)] active:scale-[0.97] transition-all border border-blue-500/50 cursor-pointer text-center focus:outline-none truncate mt-1"></div>
-                         </div>`;
-            }
-            else if (type === 'audio') {
-                html += `<div class="w-full flex-1 flex flex-col items-center justify-center relative">
-                             <div id="audio-icon-${id}" class="w-24 h-24 rounded-full bg-black/40 border-4 border-slate-700/50 flex items-center justify-center transition-all duration-300 shadow-lg z-10"><svg class="w-10 h-10 text-slate-500 transition-colors duration-300" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clip-rule="evenodd"></path></svg></div>
-                             <div id="audio-ring-${id}" class="absolute w-24 h-24 rounded-full border-[6px] border-cyan-400 opacity-0 transition-all duration-300 pointer-events-none"></div>
-                         </div>
-                         <div id="audio-status-${id}" class="text-xs font-bold tracking-widest text-slate-500 mb-2 uppercase">STATUS: IDLE</div>
-                         <div class="flex items-center gap-3 w-full mb-5 bg-black/20 p-2 rounded-xl border border-slate-700/50"><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg><input type="range" id="vol-${id}" min="0" max="1" step="0.1" value="0.5" oninput="updateVolume('${id}', this.value)" class="flex-1"></div>
-                         <input type="text" id="btn-stop-${id}" value="⏹️ STOP ALARM" readonly onclick="if(!isEditMode) stopRemoteAudio('${id}')" class="ui-btn-editable w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">`;
+                let minBound = Math.min(p1, p2); let maxBound = Math.max(p1, p2); let sVal = startVals[0] !== undefined ? parseInt(startVals[0]) : 90; sVal = Math.max(minBound, Math.min(maxBound, sVal));
+                html += `<div id="val-${id}" class="text-6xl font-mono text-blue-400 font-black tracking-tighter drop-shadow-[0_0_15px_rgba(96,165,250,0.5)] mb-6 mt-auto">${sVal}°</div><input type="range" id="slider-${id}" min="${minBound}" max="${maxBound}" value="${sVal}" oninput="updateVal('${id}', this.value); sendBluetoothCommand('${id}:'+this.value);" class="w-full mb-6 mt-auto"><div class="flex gap-4 w-full mt-auto"><div class="flex-1 flex flex-col gap-1.5"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">LIMIT 1</label><div class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-blue-400 shadow-inner mb-1" id="pos1-val-display-${id}">${p1}</div><input type="text" id="btn-pos1-${id}" value="POS 1" readonly onclick="if(!isEditMode) setServoPos('${id}', 1)" class="ui-btn-editable w-full bg-blue-600/90 hover:bg-blue-500/90 text-white tracking-wider text-xs font-bold py-2 px-1 rounded-xl shadow-[0_0_12px_rgba(37,99,235,0.4)] active:scale-[0.97] transition-all border border-blue-500/50 cursor-pointer text-center focus:outline-none truncate mt-1"></div><div class="flex-1 flex flex-col gap-1.5"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">LIMIT 2</label><div class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-blue-400 shadow-inner mb-1" id="pos2-val-display-${id}">${p2}</div><input type="text" id="btn-pos2-${id}" value="POS 2" readonly onclick="if(!isEditMode) setServoPos('${id}', 2)" class="ui-btn-editable w-full bg-blue-600/90 hover:bg-blue-500/90 text-white tracking-wider text-xs font-bold py-2 px-1 rounded-xl shadow-[0_0_12px_rgba(37,99,235,0.4)] active:scale-[0.97] transition-all border border-blue-500/50 cursor-pointer text-center focus:outline-none truncate mt-1"></div></div>`;
+            } else if (type === 'audio') {
+                html += `<div class="w-full flex-1 flex flex-col items-center justify-center relative"><div id="audio-icon-${id}" class="w-24 h-24 rounded-full bg-black/40 border-4 border-slate-700/50 flex items-center justify-center transition-all duration-300 shadow-lg z-10"><svg class="w-10 h-10 text-slate-500 transition-colors duration-300" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clip-rule="evenodd"></path></svg></div><div id="audio-ring-${id}" class="absolute w-24 h-24 rounded-full border-[6px] border-cyan-400 opacity-0 transition-all duration-300 pointer-events-none"></div></div><div id="audio-status-${id}" class="text-xs font-bold tracking-widest text-slate-500 mb-2 uppercase">STATUS: IDLE</div><div class="flex items-center gap-3 w-full mb-5 bg-black/20 p-2 rounded-xl border border-slate-700/50"><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg><input type="range" id="vol-${id}" min="0" max="1" step="0.1" value="0.5" oninput="updateVolume('${id}', this.value)" class="flex-1"></div><input type="text" id="btn-stop-${id}" value="⏹️ STOP ALARM" readonly onclick="if(!isEditMode) stopRemoteAudio('${id}')" class="ui-btn-editable w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">`;
             }
 
             html += `</div><div class="p-3 bg-black/20 border-t ${borderTheme} rounded-b-2xl flex justify-center"><input type="text" id="title-${id}" value="Custom Label" readonly class="ui-editable font-bold text-xs tracking-widest text-slate-400 uppercase bg-transparent border-none outline-none focus:ring-1 focus:ring-slate-500 rounded-md w-full text-center placeholder-slate-600 cursor-pointer truncate" placeholder="NAME THIS CARD..."></div>`;
@@ -435,17 +373,14 @@
                 await rxCharacteristic.startNotifications(); rxCharacteristic.addEventListener('characteristicvaluechanged', handleIncomingData);
 
                 const btn = document.getElementById("btnConnect"); 
-                btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Connected`; 
-                btn.className = "active:scale-[0.97] transition-all bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold py-2.5 px-5 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.5)] border border-emerald-500/50 flex items-center gap-2";
+                btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Connected`; btn.className = "active:scale-[0.97] transition-all bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold py-2.5 px-5 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.5)] border border-emerald-500/50 flex items-center gap-2";
                 setTimeout(() => { sendBluetoothCommand('SYNC'); appendTerminal("Hardware connected. Processing SYNC data..."); }, 300);
 
                 bluetoothDevice.addEventListener('gattserverdisconnected', () => {
                     const btn = document.getElementById("btnConnect"); 
-                    btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> Connect`; 
-                    btn.className = "active:scale-[0.97] transition-all bg-blue-600/90 hover:bg-blue-500 text-white font-bold py-2.5 px-5 rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.4)] border border-blue-500/50 flex items-center gap-2";
+                    btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> Connect`; btn.className = "active:scale-[0.97] transition-all bg-blue-600/90 hover:bg-blue-500 text-white font-bold py-2.5 px-5 rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.4)] border border-blue-500/50 flex items-center gap-2";
                     showMsg("Hardware disconnected!"); appendTerminal("Error: Connection lost. Dashboard cleared.");
-                    const p = document.getElementById('ping-indicator');
-                    if(p) { clearTimeout(p.timer); p.className = "w-3 h-3 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.9)] transition-colors duration-300"; }
+                    const p = document.getElementById('ping-indicator'); if(p) { clearTimeout(p.timer); p.className = "w-3 h-3 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.9)] transition-colors duration-300"; }
                     commandQueue = []; isTransmitting = false; gridEl.innerHTML = ''; activeCardTypes = {}; if (isCloudActive) syncCloud(); 
                 });
             } catch (error) { showMsg("Connection failed or cancelled."); }
@@ -499,7 +434,6 @@
                     if(ring) { ring.classList.remove('animate-ping', 'opacity-100'); }
                     if(stat) { stat.innerText = `STATUS: IDLE`; stat.classList.replace('text-cyan-400', 'text-slate-500'); }
                 }
-                if (isCloudActive) syncCloud(); 
             }
             else {
                 let valNum = parseFloat(valStr) || 0;
@@ -511,71 +445,100 @@
             }
         }
 
-        function toggleCloud() {
-            isCloudActive = !isCloudActive; const btn = document.getElementById('btn-cloud');
-            if (isCloudActive) {
-                cloudRoomId = Math.floor(1000 + Math.random() * 9000);
-                btn.innerHTML = `<svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg> Live: ${cloudRoomId}`; 
-                btn.className = "active:scale-[0.97] transition-all bg-red-600/90 hover:bg-red-500 text-white font-bold py-2.5 px-5 rounded-xl min-w-[140px] shadow-[0_0_20px_rgba(220,38,38,0.6)] border border-red-500 flex items-center justify-center gap-2";
-                db.ref('rooms/' + cloudRoomId).remove(); saveLayoutOrder(); 
-                
-                db.ref('rooms/' + cloudRoomId + '/command').on('child_added', (snap) => { 
-                    const cmdData = snap.val(); 
-                    if(cmdData && cmdData.cmd) { 
-                        if (cmdData.cmd.includes(':POS1')) { setServoPos(cmdData.cmd.split(':')[0], 1); }
-                        else if (cmdData.cmd.includes(':POS2')) { setServoPos(cmdData.cmd.split(':')[0], 2); }
-                        else if (cmdData.cmd.includes(':STOP') && cmdData.cmd.startsWith('B')) { stopRemoteAudio(cmdData.cmd.split(':')[0]); }
-                        else { sendBluetoothCommand(cmdData.cmd); parseTelemetry(cmdData.cmd); }
-                    } 
-                });
-                cloudInterval = setInterval(syncCloud, 400); appendTerminal(`Cloud stream active. Room ID: ${cloudRoomId}`);
-            } else {
-                btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg> Go Public`; 
-                btn.className = "active:scale-[0.97] transition-all bg-purple-600/90 hover:bg-purple-500 text-white font-bold py-2.5 px-5 rounded-xl shadow-[0_0_15px_rgba(147,51,234,0.4)] border border-purple-500/50 min-w-[140px] flex items-center justify-center gap-2";
-                clearInterval(cloudInterval); if(cloudRoomId) { db.ref('rooms/' + cloudRoomId).remove(); } appendTerminal("Cloud stream closed.");
-            }
-        }
+        function renderSharedCards(sharedCards) {
+            const gridEl = document.getElementById('dashboard-grid'); document.getElementById('empty-state').classList.add('hidden'); document.getElementById('section-terminal').classList.remove('hidden'); gridEl.classList.remove('hidden'); gridEl.classList.add('grid'); 
+            const currentCardIds = sharedCards.map(c => `public-card-${c.id}`); document.querySelectorAll('[id^="public-card-"]').forEach(child => { if (!currentCardIds.includes(child.id)) child.remove(); });
 
-        function syncCloud() {
-            const payload = [];
-            db.ref('rooms/' + cloudRoomId + '/config').set({ terminalVisible: cardVisibility['terminal'] !== false });
-            db.ref('rooms/' + cloudRoomId + '/heartbeat').set(Date.now());
-
-            Array.from(gridEl.children).forEach(cardDom => {
-                let id = cardDom.id.replace('card-', ''); let info = activeCardTypes[id];
-                if(cardVisibility[id] === false) return; 
-
-                if(info) {
-                    let cardData = {
-                        id: String(id), type: String(info.type), mode: info.mode ? String(info.mode) : "",
-                        val: (info.type === 'text' || info.type === 'audio') ? (advancedData[id] !== undefined ? String(advancedData[id]) : "") : (advancedData[id] != null && !Number.isNaN(Number(advancedData[id])) ? Number(advancedData[id]) : 0),
-                        title: document.getElementById(`title-${id}`)?.value || "Label"
-                    };
+            sharedCards.forEach(card => {
+                try {
+                    publicCardData[card.id] = card; let oldVal = advancedData[card.id]; advancedData[card.id] = card.val; 
+                    let cardEl = document.getElementById(`public-card-${card.id}`);
+                    let isOutput = (card.type === 'analog' && card.mode === 'OUT') || (card.type === 'digital' && (card.mode === 'OUT' || card.mode === 'PUSH')) || card.type === 'motor' || card.type === 'servo' || card.type === 'audio';
                     
-                    let isOut = (info.type === 'analog' && info.mode === 'OUT') || (info.type === 'digital' && (info.mode === 'OUT' || info.mode === 'PUSH')) || info.type === 'motor' || info.type === 'servo' || info.type === 'audio';
-                    if (isOut) { cardData.publicControl = cardPermissions[id] !== false; }
+                    if (!cardEl) {
+                        cardEl = document.createElement('div'); 
+                        let borderTheme = card.type === 'analog' ? 'border-purple-500/30' : card.type === 'digital' ? 'border-emerald-500/30' : card.type === 'motor' ? 'border-orange-500/30' : card.type === 'text' ? 'border-pink-500/30' : card.type === 'audio' ? 'border-cyan-500/30' : 'border-blue-500/30';
+                        
+                        cardEl.className = `col-span-1 maker-card bg-slate-900/60 backdrop-blur-xl rounded-2xl border ${borderTheme} shadow-xl relative z-10`;
+                        cardEl.id = `public-card-${card.id}`; cardEl.setAttribute('data-size', '0');
+                        let colorClass = card.type === 'analog' ? 'text-purple-400' : card.type === 'digital' ? 'text-emerald-400' : card.type === 'motor' ? 'text-orange-400' : card.type === 'text' ? 'text-pink-400' : card.type === 'audio' ? 'text-cyan-400' : 'text-blue-400';
+                        let iconStr = getSVGIcon(card.type);
 
-                    if (info.type === 'analog' && info.mode === 'IN') {
-                        cardData.ymin = document.getElementById(`ymin-${id}`)?.value || ""; cardData.ymax = document.getElementById(`ymax-${id}`)?.value || ""; cardData.time = document.getElementById(`time-${id}`)?.value || "0";
-                    } else if (info.type === 'digital' && info.mode === 'OUT') {
-                        cardData.btnOff = document.getElementById(`btn-off-${id}`)?.value || "OFF"; cardData.btnOn = document.getElementById(`btn-on-${id}`)?.value || "ON";
-                    } else if (info.type === 'digital' && info.mode === 'PUSH') {
-                        cardData.btnPush = document.getElementById(`btn-push-${id}`)?.value || "HOLD";
-                    } else if (info.type === 'servo') {
-                        cardData.pos1Val = Number(document.getElementById(`pos1-val-display-${id}`).innerText) || 0; 
-                        cardData.pos2Val = Number(document.getElementById(`pos2-val-display-${id}`).innerText) || 180;
-                        cardData.btnPos1 = document.getElementById(`btn-pos1-${id}`)?.value || "POS 1"; 
-                        cardData.btnPos2 = document.getElementById(`btn-pos2-${id}`)?.value || "POS 2";
-                    } else if (info.type === 'motor') {
-                        cardData.btnCcw = document.getElementById(`btn-ccw-${id}`)?.value || "⏪ CCW"; cardData.btnStop = document.getElementById(`btn-stop-${id}`)?.value || "⏹️ STOP"; cardData.btnCw = document.getElementById(`btn-cw-${id}`)?.value || "CW ⏩";
-                        cardData.cwSpd = Number(document.getElementById(`cw-spd-${id}`)?.value) || 255; cardData.ccwSpd = Number(document.getElementById(`ccw-spd-${id}`)?.value) || 255;
+                        let permBtnHTML = isOutput ? `<span id="public-perm-${card.id}" class="ml-2 text-[9px] font-bold tracking-wider border px-2 py-0.5 rounded transition-colors bg-green-900/40 text-green-400 border-green-700/50 shadow-[0_0_8px_rgba(74,222,128,0.2)]">🎮 PUBLIC</span>` : '';
+                        let html = `<div class="p-3 border-b ${borderTheme} flex justify-between items-center bg-black/20 rounded-t-2xl"><div class="flex items-center gap-2"><span class="font-bold text-sm tracking-wide ${colorClass}">${card.id}</span><span class="text-[10px] font-bold tracking-wider bg-black/40 px-2 py-0.5 rounded text-slate-400 border border-slate-700/50 flex items-center gap-1">${iconStr} ${card.mode || card.type.toUpperCase()}</span></div><div class="flex items-center">${permBtnHTML}</div></div><div class="p-5 flex-1 min-h-0 flex flex-col justify-center items-center bg-transparent overflow-hidden">`;
+
+                        if (card.type === 'analog' && card.mode === 'IN') {
+                            html += `<div class="w-full flex-1 relative min-h-[120px] bg-black/20 rounded-xl border border-slate-700/50 mb-4 flex items-center justify-center overflow-hidden"><div id="val-${card.id}" class="absolute z-10 text-6xl font-mono font-black tracking-tighter transition-colors duration-200" style="color: rgb(100, 116, 139); text-shadow: 0px 4px 20px rgba(0,0,0,1);">0</div><canvas id="chart-${card.id}" class="absolute inset-0 w-full h-full opacity-70"></canvas></div><div class="flex gap-3 w-full mt-auto"><div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MIN</label><input type="number" id="ymin-${card.id}" value="" placeholder="Auto" readonly onchange="updateSensorChartConfig('${card.id}')" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div><div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MAX</label><input type="number" id="ymax-${card.id}" value="" placeholder="Auto" readonly onchange="updateSensorChartConfig('${card.id}')" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div><div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">TIME</label><select id="time-${card.id}" disabled class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300 appearance-none"><option value="0">All</option><option value="900000">15m</option><option value="3600000">1h</option><option value="14400000">4h</option></select></div></div>`;
+                        } else if (card.type === 'analog' && card.mode === 'OUT') {
+                            html += `<div class="w-full flex-1 flex items-center justify-center"><div id="val-out-${card.id}" class="text-6xl font-mono font-black tracking-tighter transition-colors duration-200" style="color: rgb(100, 116, 139); text-shadow: 0px 4px 15px rgba(0,0,0,0.5);">0</div></div><input type="range" id="slider-${card.id}" min="0" max="1023" value="0" oninput="if(!this.disabled) { updateAnalogOutUI('${card.id}', this.value); sendRemoteCommand('${card.id}:'+this.value); }" class="w-full mb-3 mt-auto"><div class="flex justify-between w-full text-xs text-slate-500 font-mono tracking-widest"><span>0</span><span>1023</span></div>`;
+                        } else if (card.type === 'digital' && card.mode === 'IN') {
+                            html += `<div id="val-${card.id}" class="w-28 h-28 rounded-full flex items-center justify-center text-3xl font-bold tracking-widest transition-all duration-300 border-[4px] shadow-2xl">LOW</div>`;
+                        } else if (card.type === 'digital' && card.mode === 'OUT') {
+                            html += `<div class="flex-1 flex items-center justify-center w-full"><div id="val-out-${card.id}" class="w-24 h-24 rounded-2xl transition-all duration-300 border-[3px] shadow-2xl"></div></div><div class="flex gap-3 w-full mt-auto"><button id="btn-off-${card.id}" onclick="if(!this.disabled) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }" class="ui-btn-editable flex-1 py-3 px-2 bg-slate-800/80 hover:bg-slate-700/80 rounded-xl text-slate-400 font-bold tracking-widest text-sm shadow-lg active:scale-[0.97] transition-all border border-slate-700/50 text-center cursor-pointer focus:outline-none truncate">${card.btnOff || "OFF"}</button><button id="btn-on-${card.id}" onclick="if(!this.disabled) { sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1); }" class="ui-btn-editable flex-1 py-3 px-2 bg-red-600/90 hover:bg-red-500/90 rounded-xl text-white font-bold tracking-widest text-sm shadow-[0_0_15px_rgba(220,38,38,0.4)] active:scale-[0.97] transition-all border border-red-500/50 text-center cursor-pointer focus:outline-none truncate">${card.btnOn || "ON"}</button></div>`;
+                        } else if (card.type === 'digital' && card.mode === 'PUSH') {
+                            html += `<div class="flex-1 flex items-center justify-center w-full"><div id="val-out-${card.id}" class="w-24 h-24 rounded-full transition-all duration-300 border-[3px] shadow-2xl"></div></div><div class="flex w-full mt-auto"><button id="btn-push-${card.id}" onmousedown="if(!this.disabled) { sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1); }" onmouseup="if(!this.disabled) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }" onmouseleave="if(!this.disabled && advancedData['${card.id}'] == 1) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }" ontouchstart="if(!this.disabled) { sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1); }" ontouchend="if(!this.disabled) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }" class="ui-btn-editable w-full py-4 px-2 bg-purple-600/90 hover:bg-purple-500/90 rounded-xl text-white font-bold tracking-widest text-lg shadow-[0_0_20px_rgba(147,51,234,0.4)] active:scale-[0.97] transition-all border border-purple-500/50 text-center cursor-pointer focus:outline-none truncate select-none">${card.btnPush || "HOLD"}</button></div>`;
+                        } else if (card.type === 'text') {
+                            let displayTxt = card.val !== undefined ? card.val : "";
+                            html += `<div class="w-full h-full overflow-y-auto custom-scrollbar flex p-4 bg-black/20 rounded-xl border border-slate-700/50"><div id="val-${card.id}" class="m-auto w-full text-center text-3xl font-bold tracking-tight text-pink-400 break-words whitespace-pre-wrap drop-shadow-md">${displayTxt}</div></div>`;
+                        } else if (card.type === 'motor') {
+                            let mStart = card.val !== undefined ? Number(card.val) : 0; let mDisplayStr = 'STOP (0)';
+                            if (mStart !== 0) { if (card.id === 'M1' || card.id === 'M2') mDisplayStr = mStart < 0 ? `CW (${Math.abs(mStart)})` : `CCW (${Math.abs(mStart)})`; else mDisplayStr = mStart > 0 ? `CW (${Math.abs(mStart)})` : `CCW (${Math.abs(mStart)})`; }
+                            html += `<div id="val-${card.id}" class="text-2xl font-mono text-orange-400 font-bold mb-4 w-full text-center bg-black/30 py-3 rounded-xl border border-slate-700/50 shadow-inner drop-shadow-md">${mDisplayStr}</div><div class="flex flex-col gap-3 w-full mt-auto"><div class="flex justify-center gap-3 w-full"><button id="btn-ccw-${card.id}" onclick="if(!this.disabled) { sendMotorRemoteCommand('${card.id}', 'ccw'); }" class="ui-btn-editable flex-1 bg-yellow-600/90 hover:bg-yellow-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-yellow-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnCcw || "⏪ CCW"}</button><button id="btn-cw-${card.id}" onclick="if(!this.disabled) { sendMotorRemoteCommand('${card.id}', 'cw'); }" class="ui-btn-editable flex-1 bg-green-600/90 hover:bg-green-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-green-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnCw || "CW ⏩"}</button></div><button id="btn-stop-${card.id}" onclick="if(!this.disabled) { sendMotorRemoteCommand('${card.id}', 'stop'); }" class="ui-btn-editable w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnStop || "⏹️ STOP"}</button></div>`;
+                        } else if (card.type === 'servo') {
+                            let p1 = card.pos1Val !== undefined ? parseInt(card.pos1Val) : 0; let p2 = card.pos2Val !== undefined ? parseInt(card.pos2Val) : 180;
+                            let minBound = Math.min(p1, p2); let maxBound = Math.max(p1, p2); let sVal = card.val !== undefined ? parseInt(card.val) : 90; sVal = Math.max(minBound, Math.min(maxBound, sVal));
+                            html += `<div id="val-${card.id}" class="text-6xl font-mono text-blue-400 font-black tracking-tighter drop-shadow-[0_0_15px_rgba(96,165,250,0.5)] mb-6 mt-auto">${sVal}°</div><div class="flex gap-4 w-full mt-auto"><div class="flex-1 flex flex-col gap-1.5"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">LIMIT 1</label><div class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-blue-400 shadow-inner mb-1" id="pos1-val-display-${card.id}">${p1}</div><button id="btn-pos1-${card.id}" onclick="if(!this.disabled) { sendRemoteCommand('${card.id}:POS1'); }" class="ui-btn-editable w-full bg-blue-600/90 hover:bg-blue-500/90 text-white tracking-wider text-xs font-bold py-2 px-1 rounded-xl shadow-[0_0_12px_rgba(37,99,235,0.4)] active:scale-[0.97] transition-all border border-blue-500/50 cursor-pointer text-center focus:outline-none truncate mt-1">${card.btnPos1 || 'POS 1'}</button></div><div class="flex-1 flex flex-col gap-1.5"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">LIMIT 2</label><div class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-blue-400 shadow-inner mb-1" id="pos2-val-display-${card.id}">${p2}</div><button id="btn-pos2-${card.id}" onclick="if(!this.disabled) { sendRemoteCommand('${card.id}:POS2'); }" class="ui-btn-editable w-full bg-blue-600/90 hover:bg-blue-500/90 text-white tracking-wider text-xs font-bold py-2 px-1 rounded-xl shadow-[0_0_12px_rgba(37,99,235,0.4)] active:scale-[0.97] transition-all border border-blue-500/50 cursor-pointer text-center focus:outline-none truncate mt-1">${card.btnPos2 || 'POS 2'}</button></div></div>`;
+                        } else if (card.type === 'audio') {
+                            html += `<div class="w-full flex-1 flex flex-col items-center justify-center relative"><div id="audio-icon-${card.id}" class="w-24 h-24 rounded-full bg-black/40 border-4 border-slate-700/50 flex items-center justify-center transition-all duration-300 shadow-lg z-10"><svg class="w-10 h-10 text-slate-500 transition-colors duration-300" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clip-rule="evenodd"></path></svg></div><div id="audio-ring-${card.id}" class="absolute w-24 h-24 rounded-full border-[6px] border-cyan-400 opacity-0 transition-all duration-300 pointer-events-none"></div></div><div id="audio-status-${card.id}" class="text-xs font-bold tracking-widest text-slate-500 mb-2 uppercase">STATUS: IDLE</div><div class="flex items-center gap-3 w-full mb-5 bg-black/20 p-2 rounded-xl border border-slate-700/50"><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg><input type="range" id="vol-${card.id}" min="0" max="1" step="0.1" value="0.5" oninput="updateVolume('${card.id}', this.value)" class="flex-1"></div><button id="btn-stop-${card.id}" onclick="if(!this.disabled) stopRemoteAudio('${card.id}')" class="ui-btn-editable w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">⏹️ STOP ALARM</button>`;
+                        }
+
+                        html += `</div><div id="title-${card.id}" class="p-3 bg-black/20 border-t ${borderTheme} rounded-b-2xl flex justify-center text-xs font-bold tracking-widest text-slate-400 uppercase cursor-default truncate">${card.title || 'Label'}</div>`;
+                        cardEl.innerHTML = html; gridEl.appendChild(cardEl);
+                        if (card.type === 'analog' && card.mode === 'IN') initChart(card.id);
+                        if (card.type === 'analog' && card.mode === 'OUT') updateAnalogOutUI(card.id, card.val || 0);
+                        if (card.type === 'digital') updateDigitalUI(card.id, card.val || 0); 
                     }
-                    payload.push(cardData);
-                }
+
+                    let titleEl = document.getElementById(`title-${card.id}`); if(titleEl) titleEl.innerText = card.title || "Label";
+                    
+                    if (card.type === 'audio' && card.val !== oldVal) {
+                        if (String(card.val).startsWith('PLAY')) {
+                            let parts = String(card.val).split(':'); let soundType = parts[1] || 'BEEP'; let mode = parts[2] || 'ONCE';
+                            if(audioPlayers[card.id]) { audioPlayers[card.id].pause(); }
+                            let url = 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg';
+                            if(soundType === 'SIREN') url = 'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg';
+                            if(soundType === 'CHIME') url = 'https://actions.google.com/sounds/v1/doors/elevator_ding.ogg';
+
+                            let audio = new Audio(url); audio.loop = (mode === 'LOOP'); audio.volume = audioVolumes[card.id] !== undefined ? audioVolumes[card.id] : 0.5;
+                            if(!isMuted) { audio.play().catch(e=>console.log(e)); }
+                            audioPlayers[card.id] = audio;
+
+                            let icon = document.getElementById(`audio-icon-${card.id}`); let ring = document.getElementById(`audio-ring-${card.id}`); let stat = document.getElementById(`audio-status-${card.id}`);
+                            if(icon) { icon.classList.add('border-cyan-400', 'bg-cyan-900/60', 'shadow-[0_0_25px_rgba(34,211,238,0.5)]'); icon.querySelector('svg').classList.replace('text-slate-500', 'text-cyan-400'); }
+                            if(ring) { ring.classList.add('animate-ping', 'opacity-100'); }
+                            if(stat) { stat.innerText = `STATUS: PLAYING (${soundType})`; stat.classList.replace('text-slate-500', 'text-cyan-400'); }
+                        } else if (card.val === 'STOP') {
+                            if(audioPlayers[card.id]) { audioPlayers[card.id].pause(); audioPlayers[card.id].currentTime = 0; }
+                            let icon = document.getElementById(`audio-icon-${card.id}`); let ring = document.getElementById(`audio-ring-${card.id}`); let stat = document.getElementById(`audio-status-${card.id}`);
+                            if(icon) { icon.classList.remove('border-cyan-400', 'bg-cyan-900/60', 'shadow-[0_0_25px_rgba(34,211,238,0.5)]'); icon.querySelector('svg').classList.replace('text-cyan-400', 'text-slate-500'); }
+                            if(ring) { ring.classList.remove('animate-ping', 'opacity-100'); }
+                            if(stat) { stat.innerText = `STATUS: IDLE`; stat.classList.replace('text-cyan-400', 'text-slate-500'); }
+                        }
+                    }
+
+                    if (isOutput) {
+                        let canControl = card.publicControl !== false; 
+                        let badge = document.getElementById(`public-perm-${card.id}`);
+                        if (badge) {
+                            if (canControl) { badge.innerText = "🎮 PUBLIC"; badge.className = "ml-2 text-[9px] font-bold tracking-wider border px-2 py-0.5 rounded transition-colors bg-green-900/40 text-green-400 border-green-700/50 shadow-[0_0_8px_rgba(74,222,128,0.2)]"; } 
+                            else { badge.innerText = "👁️ VIEW ONLY"; badge.className = "ml-2 text-[9px] font-bold tracking-wider border px-2 py-0.5 rounded transition-colors bg-red-900/40 text-red-400 border-red-700/50"; }
+                        }
+                        let elsToToggle = [`btn-stop-${card.id}`, `vol-${card.id}`]; 
+                        elsToToggle.forEach(eid => { let el = document.getElementById(eid); if(el) { el.disabled = !canControl; if(canControl) { el.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none'); } else { el.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none'); } } });
+                    }
+                } catch (err) { console.error("Error processing card", err); }
             });
-            
-            if (payload.length === 0) { db.ref('rooms/' + cloudRoomId + '/state').set({ empty: true }).catch(console.error); } 
-            else { db.ref('rooms/' + cloudRoomId + '/state').set(payload).catch(console.error); }
+            applyPublicLayout();
         }
     </script>
 </body>
