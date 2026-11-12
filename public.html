@@ -51,7 +51,7 @@
         </div>
         <div class="flex items-center gap-3 w-full sm:w-auto justify-center">
             <button id="btn-mute" onclick="toggleMute()" class="active:scale-[0.97] transition-all bg-slate-700/90 hover:bg-slate-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg border border-slate-600/50 flex items-center justify-center gap-2">🔊 SOUND ON</button>
-            <input type="number" id="room-input" placeholder="ROOM ID" class="bg-black/30 border border-slate-600/50 rounded-xl px-4 py-2.5 font-mono text-white focus:outline-none focus:border-purple-500 w-full sm:w-32 text-center text-lg tracking-widest shadow-inner">
+            <input type="text" id="room-input" placeholder="ROOM ID" class="bg-black/30 border border-slate-600/50 rounded-xl px-4 py-2.5 font-mono text-white focus:outline-none focus:border-purple-500 w-full sm:w-32 text-center text-lg tracking-widest shadow-inner">
             <button id="btn-join" onclick="joinRoom()" class="active:scale-[0.97] transition-all bg-purple-600/90 hover:bg-purple-500 text-white font-bold py-2.5 px-6 rounded-xl shadow-[0_0_15px_rgba(147,51,234,0.4)] border border-purple-500/50 whitespace-nowrap flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> Join
             </button>
@@ -145,7 +145,10 @@
         function appendTerminal(msg, time, colorClass) { const term = document.getElementById('terminal-output'); if (term.innerHTML.includes("Awaiting logs...")) term.innerHTML = ''; const line = document.createElement('div'); line.innerHTML = `<span class="text-slate-600 mr-2">[${time}]</span> <span class="${colorClass || 'text-emerald-400'}">${escapeHTML(msg)}</span>`; term.appendChild(line); term.scrollTop = term.scrollHeight; }
 
         function joinRoom() {
-            const roomId = document.getElementById('room-input').value; if (!roomId) { showMsg("Please enter a valid Room ID."); return; }
+            const roomInputStr = document.getElementById('room-input').value; 
+            const roomId = roomInputStr ? roomInputStr.toString().trim() : "";
+            
+            if (!roomId) { showMsg("Please enter a valid Room ID."); return; }
             if(currentRoom) { db.ref('rooms/' + currentRoom + '/state').off(); db.ref('rooms/' + currentRoom + '/logs').off(); db.ref('rooms/' + currentRoom + '/layout').off(); db.ref('rooms/' + currentRoom + '/config').off(); db.ref('rooms/' + currentRoom + '/heartbeat').off(); }
             currentRoom = roomId; const btn = document.getElementById('btn-join'); 
             btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Connected`; 
@@ -258,7 +261,7 @@
                 if(v === 1) { valOut.style.backgroundColor = '#2563eb'; valOut.style.borderColor = '#60a5fa'; valOut.style.boxShadow = '0 0 25px rgba(37, 99, 235, 0.8)'; } 
                 else { valOut.style.backgroundColor = 'rgba(0,0,0,0.4)'; valOut.style.borderColor = '#334155'; valOut.style.boxShadow = 'inset 0 4px 6px rgba(0, 0, 0, 0.6)'; } 
             }
-            let card = document.getElementById(`card-${id}`);
+            let card = document.getElementById(`public-card-${id}`);
             if(card) { if(v === 1) card.style.boxShadow = '0 0 20px rgba(16, 185, 129, 0.15)'; else card.style.boxShadow = ''; }
         }
 
@@ -429,7 +432,7 @@
                             if(chart) { 
                                 if (card.ymin === "") delete chart.options.scales.y.min; else chart.options.scales.y.min = parseFloat(card.ymin); 
                                 if (card.ymax === "") delete chart.options.scales.y.max; else chart.options.scales.y.max = parseFloat(card.ymax); 
-                                chart.update(); 
+                                chart.update('none'); 
                             }
                             let tEl = document.getElementById(`time-${card.id}`); if (tEl && card.time !== undefined) { tEl.value = card.time; }
                         } 
