@@ -23,16 +23,11 @@
         body:not(.is-editing) .maker-card { cursor: default; }
         body.is-editing .maker-card { cursor: grab; border-color: #facc15 !important; box-shadow: 0 0 15px rgba(250, 204, 21, 0.2); }
         body.is-editing .maker-card:active { cursor: grabbing; }
-        
         body.is-editing .ui-btn-editable { user-select: text !important; -webkit-user-select: text !important; }
-        
         .size-btns { display: none; }
         body.is-editing .size-btns { display: flex; }
-        
-        /* NEW: Hides custom input boxes until Edit Mode is activated */
         .edit-only-flex { display: none; }
         body.is-editing .edit-only-flex { display: flex; }
-        
         #msg-box { transition: opacity 0.3s, transform 0.3s; }
         #terminal-output::-webkit-scrollbar, .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         #terminal-output::-webkit-scrollbar-track, .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
@@ -428,7 +423,7 @@
                 let colorClass = type === 'analog' ? 'text-purple-400' : type === 'digital' ? 'text-emerald-400' : type === 'motor' ? 'text-orange-400' : type === 'text' ? 'text-pink-400' : type === 'audio' ? 'text-cyan-400' : 'text-blue-400';
                 let iconStr = getSVGIcon(type);
 
-                let isOutput = (type === 'analog' && mode === 'OUT') || (type === 'digital' && (mode === 'OUT' || mode === 'PUSH')) || type === 'motor' || type === 'servo' || type === 'audio';
+                let isOutput = (type === 'analog' && mode === 'OUT') || (type === 'digital' && (mode === 'OUT' || mode === 'PUSH')) || (type === 'text' && mode === 'OUT') || type === 'motor' || type === 'servo' || type === 'audio';
                 
                 let headerBtnsHTML = `<div class="size-btns flex items-center bg-black/40 rounded ml-2 overflow-hidden border border-slate-700/50"><button onclick="changeCardSize('${id}', -1)" class="px-2 hover:bg-slate-700 text-xs font-bold text-slate-300">-</button><button onclick="changeCardSize('${id}', 1)" class="px-2 border-l border-slate-700/50 hover:bg-slate-700 text-xs font-bold text-slate-300">+</button></div>`;
 
@@ -450,8 +445,8 @@
                                  <canvas id="chart-${id}" class="absolute inset-0 w-full h-full opacity-70"></canvas>
                              </div>
                              <div class="flex gap-3 w-full mt-auto">
-                                <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MIN</label><input type="number" id="ymin-${id}" value="" placeholder="Auto" readonly onchange="updateChartConfig('${id}')" class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
-                                <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MAX</label><input type="number" id="ymax-${id}" value="" placeholder="Auto" readonly onchange="updateChartConfig('${id}')" class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
+                                <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MIN</label><input type="number" id="ymin-${id}" value="" placeholder="Auto" readonly onchange="updateChartConfig('${id}')" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
+                                <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MAX</label><input type="number" id="ymax-${id}" value="" placeholder="Auto" readonly onchange="updateChartConfig('${id}')" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
                                 <div class="flex-1 flex flex-col">
                                     <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">TIME</label>
                                     <select id="time-${id}" disabled onchange="updateChartConfig('${id}')" class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300 appearance-none">
@@ -477,11 +472,11 @@
                              <div class="edit-only-flex gap-4 w-full mt-auto pt-4">
                                  <div class="flex-1 flex flex-col gap-1.5">
                                      <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">LOW TEXT</label>
-                                     <input type="text" id="label-low-${id}" value="LOW" readonly class="ui-editable w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-emerald-400 shadow-inner">
+                                     <input type="text" id="label-low-${id}" value="LOW" readonly oninput="updateDigitalUI('${id}', advancedData['${id}'])" class="ui-editable w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-emerald-400 shadow-inner">
                                  </div>
                                  <div class="flex-1 flex flex-col gap-1.5">
                                      <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">HIGH TEXT</label>
-                                     <input type="text" id="label-high-${id}" value="HIGH" readonly class="ui-editable w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-emerald-400 shadow-inner">
+                                     <input type="text" id="label-high-${id}" value="HIGH" readonly oninput="updateDigitalUI('${id}', advancedData['${id}'])" class="ui-editable w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-emerald-400 shadow-inner">
                                  </div>
                              </div>`;
                 } 
@@ -508,6 +503,13 @@
                                     class="ui-btn-editable w-full py-4 px-2 bg-purple-600/90 hover:bg-purple-500/90 rounded-xl text-white font-bold tracking-widest text-lg shadow-[0_0_20px_rgba(147,51,234,0.4)] active:scale-[0.97] transition-all border border-purple-500/50 text-center cursor-pointer focus:outline-none truncate select-none">HOLD</button>
                              </div>`;
                 } 
+                else if (type === 'text' && mode === 'OUT') {
+                    let displayTxt = startVals && startVals[0] !== undefined ? startVals[0] : "";
+                    html += `<div class="flex-1 flex flex-col justify-center w-full gap-4 mt-auto">
+                                 <input type="text" id="text-input-${id}" value="${displayTxt}" class="w-full bg-black/40 border border-slate-700/50 rounded-xl px-4 py-4 text-center text-lg font-mono text-pink-400 shadow-inner focus:outline-none focus:border-pink-500 placeholder-slate-600 transition-colors" placeholder="TYPE MESSAGE...">
+                                 <button id="btn-send-${id}" onclick="if(!isEditMode && !this.disabled) { sendBluetoothCommand('${id}:' + document.getElementById('text-input-${id}').value); }" class="ui-btn-editable w-full bg-pink-600/90 hover:bg-pink-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(244,114,182,0.3)] active:scale-[0.97] transition-all border border-pink-500/50 cursor-pointer text-center focus:outline-none truncate">SEND</button>
+                             </div>`;
+                }
                 else if (type === 'text') {
                     let displayTxt = startVals && startVals[0] !== undefined ? startVals[0] : "";
                     html += `<div class="w-full h-full overflow-y-auto custom-scrollbar flex p-4 bg-black/20 rounded-xl border border-slate-700/50"><div id="val-${id}" class="m-auto w-full text-center text-3xl font-bold tracking-tight text-pink-400 break-words whitespace-pre-wrap drop-shadow-md">${displayTxt}</div></div>`;
@@ -524,10 +526,7 @@
                     }
 
                     html += `<div id="val-${id}" class="text-2xl font-mono text-orange-400 font-bold mb-4 w-full text-center bg-black/30 py-3 rounded-xl border border-slate-700/50 shadow-inner drop-shadow-md">${mDisplayStr}</div>
-                             <div class="flex gap-3 w-full mb-5">
-                                 <div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CCW SPEED (MAX ${mCCW})</label><input type="number" id="ccw-spd-${id}" value="${mCCW}" max="${mCCW}" min="0" readonly oninput="if(parseInt(this.value) > parseInt(this.max)) this.value = this.max; if(parseInt(this.value) < 0) this.value = 0;" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div>
-                                 <div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CW SPEED (MAX ${mCW})</label><input type="number" id="cw-spd-${id}" value="${mCW}" max="${mCW}" min="0" readonly oninput="if(parseInt(this.value) > parseInt(this.max)) this.value = this.max; if(parseInt(this.value) < 0) this.value = 0;" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div>
-                             </div>
+                             <div class="flex gap-3 w-full mb-5"><div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CCW SPEED (MAX ${mCCW})</label><input type="number" id="ccw-spd-${id}" value="${mCCW}" max="${mCCW}" min="0" readonly oninput="if(parseInt(this.value) > parseInt(this.max)) this.value = this.max; if(parseInt(this.value) < 0) this.value = 0;" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div><div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CW SPEED (MAX ${mCW})</label><input type="number" id="cw-spd-${id}" value="${mCW}" max="${mCW}" min="0" readonly oninput="if(parseInt(this.value) > parseInt(this.max)) this.value = this.max; if(parseInt(this.value) < 0) this.value = 0;" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div></div>
                              <div class="flex flex-col gap-3 w-full mt-auto">
                                  <div class="flex justify-center gap-3 w-full">
                                      <button id="btn-ccw-${id}" onclick="if(!isEditMode) setMotor('${id}', 'ccw')" class="ui-btn-editable flex-1 bg-yellow-600/90 hover:bg-yellow-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-yellow-500/50 cursor-pointer text-center focus:outline-none truncate">⏪ CCW</button>
@@ -625,7 +624,7 @@
                         let params = line.substring(5).split(","); let id = params[0];
                         if(id.startsWith("M")) createPlayingCard(id, 'motor', null, [params[2], params[3], params[4]]);
                         else if(id.startsWith("S")) createPlayingCard(id, 'servo', null, [params[2], params[3], params[4]]);
-                        else if(id.startsWith("T")) createPlayingCard(id, 'text', null, [params[2]]);
+                        else if(id.startsWith("T")) createPlayingCard(id, 'text', params[1] === 'OUT' ? 'OUT' : null, [params[2]]);
                         else if(id.startsWith("A")) createPlayingCard(id, 'analog', params[1], [params[2]]);
                         else if(id.startsWith("D")) createPlayingCard(id, 'digital', params[1], [params[2]]);
                         else if(id.startsWith("B")) createPlayingCard(id, 'audio', null, [params[2]]);
@@ -642,7 +641,13 @@
             let id = str.substring(0, splitIdx); let valStr = str.substring(splitIdx + 1);
             let cardData = activeCardTypes[id]; if (!cardData) return; advancedData[id] = valStr;
 
-            if (cardData.type === 'text') { let el = document.getElementById(`val-${id}`); if(el) el.innerText = valStr; } 
+            if (cardData.type === 'text') { 
+                if (cardData.mode === 'OUT') {
+                    let el = document.getElementById(`text-input-${id}`); if(el) el.value = valStr;
+                } else {
+                    let el = document.getElementById(`val-${id}`); if(el) el.innerText = valStr; 
+                }
+            } 
             else if (cardData.type === 'audio') {
                 if (valStr.startsWith('PLAY')) {
                     let parts = valStr.split(':');
@@ -750,7 +755,7 @@
                             title: titleEl ? String(titleEl.value) : "Label"
                         };
                         
-                        let isOut = (info.type === 'analog' && info.mode === 'OUT') || (info.type === 'digital' && (info.mode === 'OUT' || info.mode === 'PUSH')) || info.type === 'motor' || info.type === 'servo' || info.type === 'audio';
+                        let isOut = (info.type === 'analog' && info.mode === 'OUT') || (info.type === 'digital' && (info.mode === 'OUT' || info.mode === 'PUSH')) || (info.type === 'text' && info.mode === 'OUT') || info.type === 'motor' || info.type === 'servo' || info.type === 'audio';
                         if (isOut) { cardData.publicControl = cardPermissions[id] !== false; }
 
                         if (info.type === 'analog' && info.mode === 'IN') {
@@ -797,6 +802,11 @@
                         } else if (info.type === 'digital' && info.mode === 'PUSH') {
                             let bPush = document.getElementById(`btn-push-${id}`);
                             cardData.btnPush = bPush ? String(bPush.innerText) : "HOLD";
+                        } else if (info.type === 'text' && info.mode === 'OUT') {
+                            let bSend = document.getElementById(`btn-send-${id}`);
+                            cardData.btnSend = bSend ? String(bSend.innerText) : "SEND";
+                            let tInp = document.getElementById(`text-input-${id}`);
+                            cardData.val = tInp ? String(tInp.value) : "";
                         }
                         
                         payload.push(JSON.parse(JSON.stringify(cardData)));
