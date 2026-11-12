@@ -492,16 +492,20 @@
             let value = new TextDecoder().decode(event.target.value); rxBuffer += value; let lines = rxBuffer.split('\n');
             while(lines.length > 1) { 
                 let line = lines.shift().trim();
-                if (line.startsWith("LOG:")) { appendTerminal(line.substring(4)); } 
-                else if (line.startsWith("INIT:")) {
-                    let params = line.substring(5).split(","); let id = params[0];
-                    if(id.startsWith("M")) createPlayingCard(id, 'motor', null, [params[2], params[3], params[4]]);
-                    else if(id.startsWith("S")) createPlayingCard(id, 'servo', null, [params[2], params[3], params[4]]);
-                    else if(id.startsWith("T")) createPlayingCard(id, 'text', null, [params[2]]);
-                    else if(id.startsWith("A")) createPlayingCard(id, 'analog', params[1], [params[2]]);
-                    else if(id.startsWith("D")) createPlayingCard(id, 'digital', params[1], [params[2]]);
-                    else if(id.startsWith("B")) createPlayingCard(id, 'audio', null, [params[2]]);
-                } else if (line !== "") { parseTelemetry(line); }
+                try {
+                    if (line.startsWith("LOG:")) { appendTerminal(line.substring(4)); } 
+                    else if (line.startsWith("INIT:")) {
+                        let params = line.substring(5).split(","); let id = params[0];
+                        if(id.startsWith("M")) createPlayingCard(id, 'motor', null, [params[2], params[3], params[4]]);
+                        else if(id.startsWith("S")) createPlayingCard(id, 'servo', null, [params[2], params[3], params[4]]);
+                        else if(id.startsWith("T")) createPlayingCard(id, 'text', null, [params[2]]);
+                        else if(id.startsWith("A")) createPlayingCard(id, 'analog', params[1], [params[2]]);
+                        else if(id.startsWith("D")) createPlayingCard(id, 'digital', params[1], [params[2]]);
+                        else if(id.startsWith("B")) createPlayingCard(id, 'audio', null, [params[2]]);
+                    } else if (line !== "") { parseTelemetry(line); }
+                } catch (err) {
+                    console.error("Scrambled BLE data dropped:", err);
+                }
             }
             rxBuffer = lines[0];
         }
