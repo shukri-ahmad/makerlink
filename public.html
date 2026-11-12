@@ -128,7 +128,7 @@
 
         function pingCloud() {
             const p = document.getElementById('ping-indicator');
-            if(!p) return; p.className = "w-3 h-3 rounded-full bg-purple-400 shadow-[0_0_12px_rgba(192,132,252,0.9)] transition-colors duration-75";
+            if(!p) return; p.className = "w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)] transition-colors duration-75";
             clearTimeout(p.timer); p.timer = setTimeout(() => { p.className = "w-3 h-3 rounded-full bg-slate-700 transition-colors duration-300"; }, 150);
             clearTimeout(watchdogTimer); watchdogTimer = setTimeout(() => { p.className = "w-3 h-3 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.9)] transition-colors duration-300"; }, 2500); 
         }
@@ -179,8 +179,6 @@
                 } 
             });
             
-            db.ref('rooms/' + currentRoom + '/logs').on('child_added', (snap) => { const log = snap.val(); if (log) appendTerminal(log.msg, log.time, log.color); });
-            
             db.ref('rooms/' + currentRoom + '/layout').on('value', (snap) => { 
                 const layoutOrder = snap.val(); 
                 if(layoutOrder && Array.isArray(layoutOrder)) { currentLayoutOrder = layoutOrder; applyPublicLayout(); } 
@@ -210,6 +208,28 @@
 
         function stopRemoteAudio(id) { sendRemoteCommand(`${id}:STOP`); }
         function updateVolume(id, val) { audioVolumes[id] = val; if(audioPlayers[id]) audioPlayers[id].volume = val; }
+
+        function updateDigitalUI(id, val) {
+            let v = Number(val); advancedData[id] = v; let valIn = document.getElementById(`val-${id}`);
+            if(valIn) { 
+                valIn.innerText = v === 1 ? 'HIGH' : 'LOW'; 
+                if(v === 1) { valIn.style.backgroundColor = '#dc2626'; valIn.style.color = '#ffffff'; valIn.style.borderColor = '#f87171'; valIn.style.boxShadow = '0 0 25px rgba(220, 38, 38, 0.8)'; } 
+                else { valIn.style.backgroundColor = 'rgba(0,0,0,0.4)'; valIn.style.color = '#64748b'; valIn.style.borderColor = '#334155'; valIn.style.boxShadow = 'inset 0 4px 6px rgba(0, 0, 0, 0.6)'; } 
+            }
+            let valOut = document.getElementById(`val-out-${id}`);
+            if(valOut) { 
+                if(v === 1) { valOut.style.backgroundColor = '#2563eb'; valOut.style.borderColor = '#60a5fa'; valOut.style.boxShadow = '0 0 25px rgba(37, 99, 235, 0.8)'; } 
+                else { valOut.style.backgroundColor = 'rgba(0,0,0,0.4)'; valOut.style.borderColor = '#334155'; valOut.style.boxShadow = 'inset 0 4px 6px rgba(0, 0, 0, 0.6)'; } 
+            }
+            let card = document.getElementById(`public-card-${id}`);
+            if(card) { if(v === 1) card.style.boxShadow = '0 0 20px rgba(16, 185, 129, 0.15)'; else card.style.boxShadow = ''; }
+        }
+
+        function updateAnalogOutUI(id, val) {
+            let v = Number(val); advancedData[id] = v; let elOut = document.getElementById(`val-out-${id}`);
+            if(elOut) { elOut.innerText = v; elOut.style.color = getAnalogColor(v); }
+            let sl = document.getElementById(`slider-${id}`); if(sl && sl.value != v) sl.value = v;
+        }
 
         function renderSharedCards(sharedCards) {
             const gridEl = document.getElementById('dashboard-grid');
@@ -326,6 +346,8 @@
 
                         html += `</div><div id="title-${card.id}" class="p-3 bg-black/20 border-t ${borderTheme} rounded-b-2xl flex justify-center text-xs font-bold tracking-widest text-slate-400 uppercase cursor-default truncate">${card.title || 'Label'}</div>`;
                         cardEl.innerHTML = html; gridEl.appendChild(cardEl);
+                        
+                        if (card.type === 'analog' && card.mode === 'IN') initChart(card.id);
                     }
 
                     let titleEl = document.getElementById(`title-${card.id}`); if(titleEl) titleEl.innerText = card.title || "Label";
@@ -359,7 +381,8 @@
                         }
                     } 
                     else if (card.type !== 'audio' && card.type !== 'text') { 
-                        let valNum = parseFloat(card.val) || 0;
+                        let valNum = Number(card.val); if(isNaN(valNum)) valNum = 0;
+                        
                         if (card.type === 'analog' && card.mode === 'IN') { 
                             let el = document.getElementById(`val-${card.id}`); 
                             if(el) { el.innerText = valNum; el.style.color = getAnalogColor(valNum); pushChartData(card.id, valNum); }
