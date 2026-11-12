@@ -24,8 +24,7 @@
         body.is-editing .maker-card { cursor: grab; border-color: #facc15 !important; box-shadow: 0 0 15px rgba(250, 204, 21, 0.2); }
         body.is-editing .maker-card:active { cursor: grabbing; }
         
-        /* Forces buttons to allow text selection when editing */
-        body.is-editing .ui-btn-editable { user-select: text !important; -webkit-user-select: text !important; }
+        body.is-editing .ui-btn-editable, body.is-editing .ui-editable-num { user-select: text !important; -webkit-user-select: text !important; }
         
         .size-btns { display: none; }
         body.is-editing .size-btns { display: flex; }
@@ -55,10 +54,10 @@
         </div>
         <div class="flex flex-wrap gap-3 justify-center">
             <button id="btn-mute" onclick="toggleMute()" class="active:scale-[0.97] transition-all bg-slate-700/90 hover:bg-slate-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg border border-slate-600/50 flex items-center justify-center gap-2">🔊 SOUND ON</button>
-            <button id="btnConnect" onclick="connectBluetooth()" class="active:scale-[0.97] transition-all bg-blue-600/90 hover:bg-blue-500 text-white font-bold py-2.5 px-5 rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.4)] border border-blue-500/50 flex items-center gap-2">Connect</button>
-            <button id="btn-edit" onclick="toggleEditMode()" class="active:scale-[0.97] transition-all bg-slate-700/90 hover:bg-slate-600 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg border border-slate-600/50 min-w-[140px] flex items-center justify-center gap-2">Edit Layout</button>
-            <button id="btn-cloud" onclick="toggleCloud()" class="active:scale-[0.97] transition-all bg-purple-600/90 hover:bg-purple-500 text-white font-bold py-2.5 px-5 rounded-xl shadow-[0_0_15px_rgba(147,51,234,0.4)] border border-purple-500/50 min-w-[140px] flex items-center justify-center gap-2">Go Public</button>
-            <button id="btn-clear" onclick="clearDashboard()" class="active:scale-[0.97] transition-all bg-red-900/80 hover:bg-red-800 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg border border-red-800/50 flex items-center gap-2">Clear</button>
+            <button id="btnConnect" onclick="connectBluetooth()" class="active:scale-[0.97] transition-all bg-blue-600/90 hover:bg-blue-500 text-white font-bold py-2.5 px-5 rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.4)] border border-blue-500/50 flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> Connect</button>
+            <button id="btn-edit" onclick="toggleEditMode()" class="active:scale-[0.97] transition-all bg-slate-700/90 hover:bg-slate-600 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg border border-slate-600/50 min-w-[140px] flex items-center justify-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg> Edit Layout</button>
+            <button id="btn-cloud" onclick="toggleCloud()" class="active:scale-[0.97] transition-all bg-purple-600/90 hover:bg-purple-500 text-white font-bold py-2.5 px-5 rounded-xl shadow-[0_0_15px_rgba(147,51,234,0.4)] border border-purple-500/50 min-w-[140px] flex items-center justify-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg> Go Public</button>
+            <button id="btn-clear" onclick="clearDashboard()" class="active:scale-[0.97] transition-all bg-red-900/80 hover:bg-red-800 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg border border-red-800/50 flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg> Clear</button>
         </div>
     </header>
 
@@ -66,7 +65,7 @@
         <div class="bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-slate-700/50 shadow-2xl flex flex-col mb-2 overflow-hidden">
             <div class="p-3 border-b border-slate-700/50 flex justify-between items-center bg-black/20">
                 <div class="flex items-center gap-2">
-                    <h3 class="text-sm font-bold text-slate-300 flex items-center gap-2 uppercase tracking-wide">System Terminal</h3>
+                    <h3 class="text-sm font-bold text-slate-300 flex items-center gap-2 uppercase tracking-wide"><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> System Terminal</h3>
                     <button id="vis-btn-terminal" onclick="toggleVisibility('terminal')" class="ml-2 text-[10px] border px-2 py-0.5 rounded cursor-pointer hover:bg-slate-700 transition-colors bg-blue-900/30 text-blue-400 border-blue-700/50">👁️ VISIBLE</button>
                 </div>
                 <button onclick="document.getElementById('terminal-output').innerHTML='<div class=\'text-slate-600 italic\'>Logs cleared.</div>'" class="active:scale-95 text-[10px] font-bold bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded text-slate-400 transition-colors border border-slate-600">CLEAR</button>
@@ -99,6 +98,9 @@
         let cardVisibility = JSON.parse(localStorage.getItem('makerlink_vis') || '{}');
         
         const advancedData = {}; const sensorCharts = {}; let activeCardTypes = {}; 
+        
+        // HARDWARE CAPPER MEMORY
+        const hardwareLimits = {};
         
         const cardSizes = ['col-span-1', 'col-span-1 md:col-span-2', 'col-span-1 md:col-span-2 lg:col-span-3', 'col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4'];
         
@@ -198,7 +200,7 @@
             isEditMode = !isEditMode; sortable.option("disabled", !isEditMode); const btn = document.getElementById('btn-edit');
             if (isEditMode) {
                 document.body.classList.add('is-editing'); 
-                btn.innerHTML = `Save Layout`; 
+                btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg> Save Layout`; 
                 btn.className = "active:scale-[0.97] transition-all bg-yellow-500/90 hover:bg-yellow-400 text-yellow-950 font-bold py-2.5 px-5 rounded-xl shadow-[0_0_15px_rgba(234,179,8,0.5)] border border-yellow-400 min-w-[140px] flex items-center justify-center gap-2";
                 document.querySelectorAll('select').forEach(el => { el.disabled = false; });
                 
@@ -215,7 +217,7 @@
                 });
             } else {
                 document.body.classList.remove('is-editing'); 
-                btn.innerHTML = `Edit Layout`; 
+                btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg> Edit Layout`; 
                 btn.className = "active:scale-[0.97] transition-all bg-slate-700/90 hover:bg-slate-600 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg border border-slate-600/50 min-w-[140px] flex items-center justify-center gap-2";
                 document.querySelectorAll('select').forEach(el => { el.disabled = true; });
                 
@@ -324,17 +326,22 @@
             sendBluetoothCommand(`${id}:${targetVal}`); 
         }
         
+        // --- HARDWARE CAPPER (MOTOR SPEEDS) ---
         function setMotor(id, action) { 
             let val = 0; 
+            let limits = hardwareLimits[id] || {cw: 255, ccw: 255};
+            
             if (action === 'ccw') { 
                 let el = document.getElementById(`ccw-spd-${id}`);
                 let spd = el ? (parseInt(el.value) || 0) : 255; 
-                val = -(spd > 255 ? 255 : (spd < 0 ? 0 : spd)); 
+                if (spd > limits.ccw) { spd = limits.ccw; if (el) el.value = limits.ccw; saveCustomLabels(); }
+                val = -(spd < 0 ? 0 : spd); 
             } 
             else if (action === 'cw') { 
                 let el = document.getElementById(`cw-spd-${id}`);
                 let spd = el ? (parseInt(el.value) || 0) : 255; 
-                val = (spd > 255 ? 255 : (spd < 0 ? 0 : spd)); 
+                if (spd > limits.cw) { spd = limits.cw; if (el) el.value = limits.cw; saveCustomLabels(); }
+                val = (spd < 0 ? 0 : spd); 
             } 
             if (id === 'M1' || id === 'M2') { val = -val; }
 
@@ -348,9 +355,18 @@
             advancedData[id] = val; 
             sendBluetoothCommand(`${id}:${val}`); 
         }
+        // -------------------------------------
 
         function createPlayingCard(id, type, mode, startVals) {
             try {
+                // Save hardware limits locally when MakeCode boots
+                if (type === 'motor') {
+                    hardwareLimits[id] = {
+                        cw: startVals && startVals[1] !== undefined ? parseInt(startVals[1]) : 255,
+                        ccw: startVals && startVals[2] !== undefined ? parseInt(startVals[2]) : 255
+                    };
+                }
+
                 if(document.getElementById(`card-${id}`)) {
                     if (type === 'servo' && startVals) {
                         let p1 = startVals[1] !== undefined ? parseInt(startVals[1]) : 0; let p2 = startVals[2] !== undefined ? parseInt(startVals[2]) : 180;
@@ -359,8 +375,10 @@
                         let sl = document.getElementById(`slider-${id}`);
                         if(sl) { sl.min = Math.min(p1,p2); sl.max = Math.max(p1,p2); let bounded = Math.max(sl.min, Math.min(sl.max, parseInt(sl.value))); if(parseInt(sl.value) !== bounded) { sl.value = bounded; updateVal(id, bounded); } }
                     } else if (type === 'motor' && startVals) {
+                        // MakeCode's numbers represent the Absolute Hardware Cap. Let the user's custom input stand, but if they delete it, it defaults to the hard limit.
                         let cwEl = document.getElementById(`cw-spd-${id}`); let ccwEl = document.getElementById(`ccw-spd-${id}`);
-                        if(cwEl && ccwEl) { cwEl.value = startVals[1] !== undefined ? parseInt(startVals[1]) : 255; ccwEl.value = startVals[2] !== undefined ? parseInt(startVals[2]) : 255; }
+                        if(cwEl && cwEl.value === "") { cwEl.value = hardwareLimits[id].cw; }
+                        if(ccwEl && ccwEl.value === "") { ccwEl.value = hardwareLimits[id].ccw; }
                     }
                     applySavedLayout(); applyCustomLabels(); saveLayoutOrder(); return; 
                 }
@@ -453,17 +471,13 @@
                 }
                 else if (type === 'motor') {
                     let mStart = startVals && startVals[0] !== undefined ? Number(startVals[0]) : 0;
-                    let mCW = startVals && startVals[1] !== undefined ? startVals[1] : 255;
-                    let mCCW = startVals && startVals[2] !== undefined ? startVals[2] : 255;
                     
-                    let mDisplayStr = 'STOP (0)';
-                    if (mStart !== 0) {
-                        if (id === 'M1' || id === 'M2') mDisplayStr = mStart < 0 ? `CW (${Math.abs(mStart)})` : `CCW (${Math.abs(mStart)})`;
-                        else mDisplayStr = mStart > 0 ? `CW (${Math.abs(mStart)})` : `CCW (${Math.abs(mStart)})`;
-                    }
-
-                    html += `<div id="val-${id}" class="text-2xl font-mono text-orange-400 font-bold mb-4 w-full text-center bg-black/30 py-3 rounded-xl border border-slate-700/50 shadow-inner drop-shadow-md">${mDisplayStr}</div>
-                             <div class="flex gap-3 w-full mb-5"><div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CCW SPEED</label><input type="number" id="ccw-spd-${id}" value="${mCCW}" readonly class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div><div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CW SPEED</label><input type="number" id="cw-spd-${id}" value="${mCW}" readonly class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div></div>
+                    // We generate editable inputs for the speed fields!
+                    html += `<div id="val-${id}" class="text-2xl font-mono text-orange-400 font-bold mb-4 w-full text-center bg-black/30 py-3 rounded-xl border border-slate-700/50 shadow-inner drop-shadow-md">STOP (0)</div>
+                             <div class="flex gap-3 w-full mb-5">
+                                 <div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CCW SPEED</label><input type="number" id="ccw-spd-${id}" value="${hardwareLimits[id].ccw}" readonly class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div>
+                                 <div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CW SPEED</label><input type="number" id="cw-spd-${id}" value="${hardwareLimits[id].cw}" readonly class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div>
+                             </div>
                              <div class="flex flex-col gap-3 w-full mt-auto">
                                  <div class="flex justify-center gap-3 w-full">
                                      <button id="btn-ccw-${id}" onclick="if(!isEditMode) setMotor('${id}', 'ccw')" class="ui-btn-editable flex-1 bg-yellow-600/90 hover:bg-yellow-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-yellow-500/50 cursor-pointer text-center focus:outline-none truncate">⏪ CCW</button>
@@ -507,7 +521,7 @@
                              <button id="btn-stop-${id}" onclick="if(!isEditMode) stopRemoteAudio('${id}')" class="ui-btn-editable w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">⏹️ STOP ALARM</button>`;
                 }
 
-                html += `</div><div class="p-3 bg-black/20 border-t ${borderTheme} rounded-b-2xl flex justify-center"><input type="text" id="title-${id}" value="Custom Label" class="ui-editable w-full font-bold text-xs tracking-widest text-slate-400 uppercase bg-transparent border-none outline-none focus:ring-1 focus:ring-slate-500 rounded-md text-center placeholder-slate-600 cursor-pointer truncate" placeholder="NAME THIS CARD..." readonly></div>`;
+                html += `</div><div class="p-3 bg-black/20 border-t ${borderTheme} rounded-b-2xl flex justify-center"><input type="text" id="title-${id}" value="Custom Label" readonly class="ui-editable font-bold text-xs tracking-widest text-slate-400 uppercase bg-transparent border-none outline-none focus:ring-1 focus:ring-slate-500 rounded-md w-full text-center placeholder-slate-600 cursor-pointer truncate" placeholder="NAME THIS CARD..."></div>`;
 
                 card.innerHTML = html; gridEl.appendChild(card);
                 
