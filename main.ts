@@ -20,6 +20,7 @@ namespace makerlink {
         Read
     }
 
+    // --- AUDIO ENUMS ---
     export enum MLAudioID { B1, B2, B3, B4 }
     export enum MLAudioSound {
         //% block="🚨 Siren"
@@ -200,6 +201,7 @@ namespace makerlink {
      * Initialize a DC Motor Card
      */
     //% block="⚙️ Init Motor Card $motor || start speed $startVal limit CW $cw CCW $ccw"
+    //% inlineInputMode=inline
     //% expandableArgumentMode="toggle"
     //% startVal.defl=0 cw.defl=255 ccw.defl=255
     //% group="Setup (On Start)"
@@ -215,6 +217,7 @@ namespace makerlink {
      * Initialize a Servo Card
      */
     //% block="🦾 Init Servo Card $servo || start $start° delay $delay ms limits $pos1° to $pos2°"
+    //% inlineInputMode=inline
     //% expandableArgumentMode="toggle"
     //% start.defl=90 delay.defl=15 pos1.defl=0 pos2.defl=180
     //% group="Setup (On Start)"
@@ -359,6 +362,7 @@ namespace makerlink {
      * Runs the motor (-255 to 255)
      */
     //% block="MakerLink run motor $motor at speed $speed"
+    //% inlineInputMode=inline
     //% group="Write (Actions)"
     //% speed.min=-255 speed.max=255
     //% weight=72
@@ -378,6 +382,7 @@ namespace makerlink {
      * Sets the servo angle smoothly in hardware. 
      */
     //% block="MakerLink set servo $servo to $angle degrees || with delay $delay ms"
+    //% inlineInputMode=inline
     //% group="Write (Actions)"
     //% expandableArgumentMode="toggle"
     //% delay.defl=0
