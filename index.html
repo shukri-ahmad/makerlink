@@ -121,13 +121,64 @@
                 btn.innerHTML = "🔇 MUTED";
                 btn.classList.replace("bg-slate-700/90", "bg-red-900/80");
                 btn.classList.replace("border-slate-600/50", "border-red-800/50");
-                for (let id in audioPlayers) { if (audioPlayers[id]) { audioPlayers[id].pause(); audioPlayers[id].currentTime = 0; } }
+                for (let id in audioPlayers) {
+                    if (audioPlayers[id]) { audioPlayers[id].pause(); audioPlayers[id].currentTime = 0; }
+                }
             } else {
                 btn.innerHTML = "🔊 SOUND ON";
                 btn.classList.replace("bg-red-900/80", "bg-slate-700/90");
                 btn.classList.replace("border-red-800/50", "border-slate-600/50");
             }
         }
+
+        // --- RESTORED LAYOUT FUNCTIONS ---
+        function changeCardSize(id, delta) {
+            let card = document.getElementById(`card-${id}`);
+            if (!card) return;
+            let currentSize = parseInt(card.getAttribute('data-size') || '0');
+            currentSize += delta;
+            if (currentSize < 0) currentSize = 0;
+            if (currentSize >= cardSizes.length) currentSize = cardSizes.length - 1;
+            card.setAttribute('data-size', currentSize);
+            card.className = card.className.replace(/\b(md:|lg:|xl:)?col-span-\d\b/g, '').replace(/\s+/g, ' ').trim();
+            let newClasses = cardSizes[currentSize].split(' ');
+            card.classList.add(...newClasses);
+            saveLayoutOrder();
+        }
+
+        function saveLayoutOrder() { 
+            const finalOrder = []; const currentDOMIds = new Set();
+            Array.from(gridEl.children).forEach(c => { 
+                let id = c.id.replace('card-', ''); let size = c.getAttribute('data-size') || '0';
+                currentDOMIds.add(id); finalOrder.push({ id: id, size: size }); 
+            }); 
+            const saved = JSON.parse(localStorage.getItem('makerlink_layout') || '[]'); 
+            saved.forEach(item => { let id = typeof item === 'string' ? item : item.id; if (!currentDOMIds.has(id)) { finalOrder.push({ id: id, size: item.size || '0' }); } });
+            localStorage.setItem('makerlink_layout', JSON.stringify(finalOrder)); 
+            if (isCloudActive && cloudRoomId) { db.ref('rooms/' + cloudRoomId + '/layout').set(finalOrder); } 
+        }
+        
+        function saveCustomLabels() { 
+            let labels = JSON.parse(localStorage.getItem('makerlink_labels') || '{}'); 
+            document.querySelectorAll('.ui-editable, .ui-btn-editable, .ui-editable-num').forEach(el => { if(el.id) labels[el.id] = el.value; }); 
+            localStorage.setItem('makerlink_labels', JSON.stringify(labels)); 
+        }
+
+        function applyCustomLabels() { let labels = JSON.parse(localStorage.getItem('makerlink_labels') || '{}'); for(let id in labels) { let el = document.getElementById(id); if(el) { el.value = labels[id]; if (el.onchange) el.onchange(); } } }
+        
+        function applySavedLayout() { 
+            const saved = JSON.parse(localStorage.getItem('makerlink_layout') || '[]'); 
+            saved.forEach(item => { 
+                let id = typeof item === 'string' ? item : item.id; const card = document.getElementById(`card-${id}`); 
+                if (card) { 
+                    let s = item.size || '0'; card.setAttribute('data-size', s);
+                    card.className = card.className.replace(/\b(md:|lg:|xl:)?col-span-\d\b/g, '').replace(/\s+/g, ' ').trim();
+                    let newClasses = cardSizes[parseInt(s)].split(' '); card.classList.add(...newClasses);
+                    gridEl.appendChild(card); 
+                } 
+            }); 
+        }
+        // ---------------------------------
 
         function pingBluetooth() {
             const p = document.getElementById('ping-indicator');
@@ -630,7 +681,7 @@
                 if (payload.length === 0) { db.ref('rooms/' + cloudRoomId + '/state').set({ empty: true }).catch(e=>console.log(e)); } 
                 else { db.ref('rooms/' + cloudRoomId + '/state').set(payload).catch(e=>console.log(e)); }
             } catch (err) {
-                appendTerminal("CLOUD SYNC ERROR: " + err.message);
+                console.error("Sync Error:", err);
             }
         }
         
