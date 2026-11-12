@@ -118,6 +118,7 @@
         const gridEl = document.getElementById('dashboard-grid');
         const sortable = new Sortable(gridEl, { animation: 150, ghostClass: 'sortable-ghost', disabled: true, filter: ".size-btns, input, select, button", preventOnFilter: false, onEnd: function (evt) { saveLayoutOrder(); } });
 
+        // FIX: The SVG generator is officially back in the Host file!
         function getSVGIcon(type) {
             if(type === 'analog') return `<svg class="w-3 h-3 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>`;
             if(type === 'digital') return `<svg class="w-3 h-3 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>`;
@@ -142,7 +143,56 @@
             }
         }
 
-        function pingCloud() {
+        if (cardVisibility['terminal'] === false) { let tBtn = document.getElementById('vis-btn-terminal'); if(tBtn) { tBtn.innerText = "🙈 HIDDEN"; tBtn.className = "ml-2 text-[10px] border px-2 py-0.5 rounded cursor-pointer hover:bg-slate-700 transition-colors bg-slate-800/50 text-slate-400 border-slate-600/50"; } }
+        
+        function changeCardSize(id, delta) {
+            let card = document.getElementById(`card-${id}`);
+            if (!card) return;
+            let currentSize = parseInt(card.getAttribute('data-size') || '0');
+            currentSize += delta;
+            if (currentSize < 0) currentSize = 0;
+            if (currentSize >= cardSizes.length) currentSize = cardSizes.length - 1;
+            card.setAttribute('data-size', currentSize);
+            card.className = card.className.replace(/\b(md:|lg:|xl:)?col-span-\d\b/g, '').replace(/\s+/g, ' ').trim();
+            let newClasses = cardSizes[currentSize].split(' ');
+            card.classList.add(...newClasses);
+            saveLayoutOrder();
+        }
+
+        function saveLayoutOrder() { 
+            const finalOrder = []; const currentDOMIds = new Set();
+            Array.from(gridEl.children).forEach(c => { 
+                let id = c.id.replace('card-', ''); let size = c.getAttribute('data-size') || '0';
+                currentDOMIds.add(id); finalOrder.push({ id: id, size: size }); 
+            }); 
+            const saved = JSON.parse(localStorage.getItem('makerlink_layout') || '[]'); 
+            saved.forEach(item => { let id = typeof item === 'string' ? item : item.id; if (!currentDOMIds.has(id)) { finalOrder.push({ id: id, size: item.size || '0' }); } });
+            localStorage.setItem('makerlink_layout', JSON.stringify(finalOrder)); 
+            if (isCloudActive && cloudRoomId) { db.ref('rooms/' + cloudRoomId + '/layout').set(finalOrder); } 
+        }
+        
+        function saveCustomLabels() { 
+            let labels = JSON.parse(localStorage.getItem('makerlink_labels') || '{}'); 
+            document.querySelectorAll('.ui-editable, .ui-btn-editable, .ui-editable-num').forEach(el => { if(el.id) labels[el.id] = el.value; }); 
+            localStorage.setItem('makerlink_labels', JSON.stringify(labels)); 
+        }
+
+        function applyCustomLabels() { let labels = JSON.parse(localStorage.getItem('makerlink_labels') || '{}'); for(let id in labels) { let el = document.getElementById(id); if(el) { el.value = labels[id]; if (el.onchange) el.onchange(); } } }
+        
+        function applySavedLayout() { 
+            const saved = JSON.parse(localStorage.getItem('makerlink_layout') || '[]'); 
+            saved.forEach(item => { 
+                let id = typeof item === 'string' ? item : item.id; const card = document.getElementById(`card-${id}`); 
+                if (card) { 
+                    let s = item.size || '0'; card.setAttribute('data-size', s);
+                    card.className = card.className.replace(/\b(md:|lg:|xl:)?col-span-\d\b/g, '').replace(/\s+/g, ' ').trim();
+                    let newClasses = cardSizes[parseInt(s)].split(' '); card.classList.add(...newClasses);
+                    gridEl.appendChild(card); 
+                } 
+            }); 
+        }
+
+        function pingBluetooth() {
             const p = document.getElementById('ping-indicator');
             if(!p) return; p.className = "w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)] transition-colors duration-75";
             clearTimeout(p.timer); p.timer = setTimeout(() => { p.className = "w-3 h-3 rounded-full bg-slate-700 transition-colors duration-300"; }, 150);
@@ -452,7 +502,9 @@
                         else if(id.startsWith("D")) createPlayingCard(id, 'digital', params[1], [params[2]]);
                         else if(id.startsWith("B")) createPlayingCard(id, 'audio', null, [params[2]]);
                     } else if (line !== "") { parseTelemetry(line); }
-                } catch (err) { console.error("Scrambled BLE data dropped"); }
+                } catch (err) {
+                    console.error("Scrambled BLE data dropped:", err);
+                }
             }
             rxBuffer = lines[0];
         }
@@ -467,12 +519,17 @@
                 if (valStr.startsWith('PLAY')) {
                     let parts = valStr.split(':');
                     let soundType = parts[1] || 'BEEP'; let mode = parts[2] || 'ONCE';
+
                     if(audioPlayers[id]) { audioPlayers[id].pause(); }
+
                     let url = 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg';
                     if(soundType === 'SIREN') url = 'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg';
                     if(soundType === 'CHIME') url = 'https://actions.google.com/sounds/v1/doors/elevator_ding.ogg';
 
-                    let audio = new Audio(url); audio.loop = (mode === 'LOOP'); audio.volume = audioVolumes[id] !== undefined ? audioVolumes[id] : 0.5;
+                    let audio = new Audio(url);
+                    audio.loop = (mode === 'LOOP');
+                    audio.volume = audioVolumes[id] !== undefined ? audioVolumes[id] : 0.5;
+                    
                     if(!isMuted) { audio.play().catch(e=>console.log(e)); }
                     audioPlayers[id] = audio;
 
@@ -487,7 +544,7 @@
                     if(ring) { ring.classList.remove('animate-ping', 'opacity-100'); }
                     if(stat) { stat.innerText = `STATUS: IDLE`; stat.classList.replace('text-cyan-400', 'text-slate-500'); }
                 }
-                if (isCloudActive) syncCloud(); 
+                if (isCloudActive) syncCloud(); // Force sync so Public hears it too!
             }
             else {
                 let valNum = Number(valStr); if(isNaN(valNum)) valNum = 0;
