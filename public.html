@@ -12,25 +12,15 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
-        body { 
-            font-family: 'Inter', system-ui, sans-serif; 
-            background: radial-gradient(circle at top left, #1e293b, #0f172a);
-        }
-        
+        body { font-family: 'Inter', system-ui, sans-serif; background: radial-gradient(circle at top left, #1e293b, #0f172a); }
         input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; outline: none; }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #1e293b; border-radius: 9999px; border: 1px solid #334155; }
-        input[type=range]::-webkit-slider-thumb { 
-            -webkit-appearance: none; height: 16px; width: 24px; border-radius: 9999px; background: #38bdf8; 
-            cursor: pointer; margin-top: -6px; box-shadow: 0 0 12px rgba(56, 189, 248, 0.8); transition: transform 0.1s; 
-        }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 24px; border-radius: 9999px; background: #38bdf8; cursor: pointer; margin-top: -6px; box-shadow: 0 0 12px rgba(56, 189, 248, 0.8); transition: transform 0.1s; }
         input[type=range]::-webkit-slider-thumb:active { transform: scale(1.2); }
-        
         #msg-box { transition: opacity 0.3s, transform 0.3s; }
-        
         #terminal-output::-webkit-scrollbar, .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         #terminal-output::-webkit-scrollbar-track, .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
         #terminal-output::-webkit-scrollbar-thumb, .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-
         .maker-card { height: 380px; display: flex; flex-direction: column; transition: all 0.3s ease; }
         select { padding-right: 0 !important; }
     </style>
@@ -142,7 +132,14 @@
         function getAnalogColor(val) { let r = Math.min(1, Math.max(0, val / 1023)); let red = Math.round(100 + r * 149); let green = Math.round(116 - r * 1); let blue = Math.round(139 - r * 117); return `rgb(${red}, ${green}, ${blue})`; }
         function showMsg(msg) { const box = document.getElementById('msg-box'); box.innerText = msg; box.classList.remove('opacity-0', 'pointer-events-none'); box.classList.add('opacity-100'); setTimeout(() => { box.classList.remove('opacity-100'); box.classList.add('opacity-0', 'pointer-events-none'); }, 4000); }
         function escapeHTML(str) { return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag])); }
-        function appendTerminal(msg, time, colorClass) { const term = document.getElementById('terminal-output'); if (term.innerHTML.includes("Awaiting logs...")) term.innerHTML = ''; const line = document.createElement('div'); line.innerHTML = `<span class="text-slate-600 mr-2">[${time}]</span> <span class="${colorClass || 'text-emerald-400'}">${escapeHTML(msg)}</span>`; term.appendChild(line); term.scrollTop = term.scrollHeight; }
+        function appendTerminal(msg, colorClassStr = null) { 
+            const term = document.getElementById('terminal-output'); 
+            if (term.innerHTML.includes("Awaiting logs...")) term.innerHTML = ''; 
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false }); const line = document.createElement('div'); 
+            let colorClass = colorClassStr || (msg.toLowerCase().includes('error') || msg.toLowerCase().includes('crash') || msg.toLowerCase().includes('fail') ? 'text-red-400 font-bold' : 'text-emerald-400'); 
+            line.innerHTML = `<span class="text-slate-600 mr-2">[${time}]</span> <span class="${colorClass}">${escapeHTML(msg)}</span>`; 
+            term.appendChild(line); term.scrollTop = term.scrollHeight; 
+        }
 
         function joinRoom() {
             const roomInputStr = document.getElementById('room-input').value; 
@@ -174,7 +171,12 @@
                         return;
                     }
                     if (!Array.isArray(data)) data = Object.values(data);
-                    renderSharedCards(data); 
+                    try {
+                        renderSharedCards(data); 
+                    } catch (err) {
+                        appendTerminal("PUBLIC RENDER ERROR: " + err.message, "text-red-400 font-bold");
+                        console.error("Render Error:", err);
+                    }
                 } else { 
                     clearWatchdog();
                     document.getElementById('empty-state').classList.remove('hidden'); document.getElementById('dashboard-grid').classList.add('hidden'); document.getElementById('dashboard-grid').classList.remove('grid'); 
@@ -182,7 +184,7 @@
                 } 
             });
             
-            db.ref('rooms/' + currentRoom + '/logs').on('child_added', (snap) => { const log = snap.val(); if (log) appendTerminal(log.msg, log.time, log.color); });
+            db.ref('rooms/' + currentRoom + '/logs').on('child_added', (snap) => { const log = snap.val(); if (log) appendTerminal(log.msg, log.color); });
             
             db.ref('rooms/' + currentRoom + '/layout').on('value', (snap) => { 
                 const layoutOrder = snap.val(); 
@@ -261,7 +263,7 @@
                 if(v === 1) { valOut.style.backgroundColor = '#2563eb'; valOut.style.borderColor = '#60a5fa'; valOut.style.boxShadow = '0 0 25px rgba(37, 99, 235, 0.8)'; } 
                 else { valOut.style.backgroundColor = 'rgba(0,0,0,0.4)'; valOut.style.borderColor = '#334155'; valOut.style.boxShadow = 'inset 0 4px 6px rgba(0, 0, 0, 0.6)'; } 
             }
-            let card = document.getElementById(`card-${id}`);
+            let card = document.getElementById(`public-card-${id}`);
             if(card) { if(v === 1) card.style.boxShadow = '0 0 20px rgba(16, 185, 129, 0.15)'; else card.style.boxShadow = ''; }
         }
 
@@ -309,8 +311,8 @@
                                          <canvas id="chart-${card.id}" class="absolute inset-0 w-full h-full opacity-70"></canvas>
                                      </div>
                                      <div class="flex gap-3 w-full mt-auto">
-                                        <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MIN</label><input type="number" id="ymin-${card.id}" value="" placeholder="Auto" readonly onchange="updateChartConfig('${card.id}')" class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
-                                        <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MAX</label><input type="number" id="ymax-${card.id}" value="" placeholder="Auto" readonly onchange="updateChartConfig('${card.id}')" class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
+                                        <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MIN</label><input type="number" id="ymin-${card.id}" value="${card.ymin || ''}" placeholder="Auto" readonly onchange="updateChartConfig('${card.id}')" class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
+                                        <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MAX</label><input type="number" id="ymax-${card.id}" value="${card.ymax || ''}" placeholder="Auto" readonly onchange="updateChartConfig('${card.id}')" class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
                                         <div class="flex-1 flex flex-col">
                                             <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">TIME</label>
                                             <select id="time-${card.id}" disabled onchange="updateChartConfig('${card.id}')" class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300 appearance-none">
@@ -374,7 +376,7 @@
                         } else if (card.type === 'audio') {
                             html += `<div class="w-full flex-1 flex flex-col items-center justify-center relative">
                                          <div id="audio-icon-${card.id}" class="w-24 h-24 rounded-full bg-black/40 border-4 border-slate-700/50 flex items-center justify-center transition-all duration-300 shadow-lg z-10">
-                                             <svg class="w-10 h-10 text-slate-500 transition-colors duration-300" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clip-rule="evenodd"></path></svg>
+                                             <svg class="w-10 h-10 text-slate-500 transition-colors duration-300" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 01-1-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clip-rule="evenodd"></path></svg>
                                          </div>
                                          <div id="audio-ring-${card.id}" class="absolute w-24 h-24 rounded-full border-[6px] border-cyan-400 opacity-0 transition-all duration-300 pointer-events-none"></div>
                                      </div>
@@ -386,13 +388,16 @@
                                      <button id="btn-stop-${card.id}" onclick="if(!this.disabled) stopRemoteAudio('${card.id}')" class="w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">⏹️ STOP ALARM</button>`;
                         }
 
-                        html += `</div><div id="title-${card.id}" class="p-3 bg-black/20 border-t ${borderTheme} rounded-b-2xl flex justify-center text-xs font-bold tracking-widest text-slate-400 uppercase cursor-default truncate">${card.title || 'Label'}</div>`;
+                        html += `</div><div id="title-${card.id}" class="p-3 bg-black/20 border-t ${borderTheme} rounded-b-2xl flex justify-center"><input type="text" id="title-${card.id}" value="${card.title || 'Custom Label'}" readonly class="w-full font-bold text-xs tracking-widest text-slate-400 uppercase bg-transparent border-none outline-none focus:ring-1 focus:ring-slate-500 rounded-md text-center placeholder-slate-600 cursor-pointer truncate" placeholder="NAME THIS CARD..."></div>`;
+
                         cardEl.innerHTML = html; gridEl.appendChild(cardEl);
                         
-                        if (card.type === 'analog' && card.mode === 'IN') initChart(card.id);
+                        if (card.type === 'analog' && card.mode === 'IN') {
+                            initChart(card.id); 
+                        }
                     }
 
-                    let titleEl = document.getElementById(`title-${card.id}`); if(titleEl) titleEl.innerText = card.title || "Label";
+                    let titleEl = document.getElementById(`title-${card.id}`); if(titleEl) titleEl.value = card.title || "Label";
                     
                     if (card.type === 'text') { 
                         let el = document.getElementById(`val-${card.id}`); if(el) el.innerText = card.val; 
@@ -475,13 +480,17 @@
                             if(el) { el.disabled = !canControl; if(canControl) { el.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none'); } else { el.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none'); } }
                         });
                     }
-                } catch (err) { console.error("Error processing card data", card, err); }
+                } catch (err) { 
+                    console.error("Card processing error:", card, err);
+                }
             });
             applyPublicLayout();
         }
 
         function initChart(id) { 
-            const ctx = document.getElementById(`chart-${id}`).getContext('2d'); 
+            let canvas = document.getElementById(`chart-${id}`);
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d'); 
             sensorCharts[id] = new Chart(ctx, { 
                 type: 'line', 
                 data: { labels: [], datasets: [{ data: [], borderColor: '#c084fc', tension: 0.3, pointRadius: 0, borderWidth: 2, fill: true, backgroundColor: 'rgba(192, 132, 252, 0.1)' }] }, 
@@ -490,8 +499,11 @@
         }
         
         function updateChartConfig(id) {
-            const yMin = document.getElementById(`ymin-${id}`).value; 
-            const yMax = document.getElementById(`ymax-${id}`).value; 
+            let yMinEl = document.getElementById(`ymin-${id}`);
+            let yMaxEl = document.getElementById(`ymax-${id}`);
+            if(!yMinEl || !yMaxEl) return;
+            const yMin = yMinEl.value; 
+            const yMax = yMaxEl.value; 
             if(sensorCharts[id]) { 
                 if (yMin === "") delete sensorCharts[id].options.scales.y.min; else sensorCharts[id].options.scales.y.min = parseFloat(yMin); 
                 if (yMax === "") delete sensorCharts[id].options.scales.y.max; else sensorCharts[id].options.scales.y.max = parseFloat(yMax); 
