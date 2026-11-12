@@ -17,7 +17,16 @@
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #1e293b; border-radius: 9999px; border: 1px solid #334155; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 24px; border-radius: 9999px; background: #38bdf8; cursor: pointer; margin-top: -6px; box-shadow: 0 0 12px rgba(56, 189, 248, 0.8); transition: transform 0.1s; }
         input[type=range]::-webkit-slider-thumb:active { transform: scale(1.2); }
+        body.is-editing .ui-editable { border-bottom: 1px dashed #facc15; border-radius: 0; cursor: text !important; }
+        body:not(.is-editing) .ui-editable { border-bottom: 1px solid transparent; }
+        body:not(.is-editing) .maker-card { cursor: default; }
+        body.is-editing .maker-card { cursor: grab; border-color: #facc15 !important; box-shadow: 0 0 15px rgba(250, 204, 21, 0.2); }
+        body.is-editing .maker-card:active { cursor: grabbing; }
         
+        body.is-editing .ui-btn-editable { user-select: text !important; -webkit-user-select: text !important; }
+        
+        .size-btns { display: none; }
+        body.is-editing .size-btns { display: flex; }
         #msg-box { transition: opacity 0.3s, transform 0.3s; }
         #terminal-output::-webkit-scrollbar, .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         #terminal-output::-webkit-scrollbar-track, .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
@@ -77,9 +86,6 @@
     </div>
 
     <script>
-        // Clear any poisoned local layout memory from previous test runs
-        localStorage.removeItem('makerlink_public_layout');
-
         const firebaseConfig = { apiKey: "AIzaSyAMLoInCYEYyT97RtkjW6rnT0lKTu7_xik", authDomain: "makerlink-b575b.firebaseapp.com", databaseURL: "https://makerlink-b575b-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "makerlink-b575b", storageBucket: "makerlink-b575b.firebasestorage.app" };
         firebase.initializeApp(firebaseConfig); const db = firebase.database();
         
@@ -118,26 +124,6 @@
                 btn.classList.replace("bg-red-900/80", "bg-slate-700/90");
                 btn.classList.replace("border-red-800/50", "border-slate-600/50");
             }
-        }
-
-        function applyPublicLayout() {
-            // Strictly follow the layout array pushed from the Firebase Cloud
-            if (!currentLayoutOrder || currentLayoutOrder.length === 0) return;
-            
-            const grid = document.getElementById('dashboard-grid'); 
-            currentLayoutOrder.forEach(item => { 
-                let id = typeof item === 'string' ? item : item.id; 
-                const card = document.getElementById(`public-card-${id}`); 
-                if(card) {
-                    let s = item.size || '0'; 
-                    card.setAttribute('data-size', s);
-                    card.className = card.className.replace(/\b(md:|lg:|xl:)?col-span-\d\b/g, '').replace(/\s+/g, ' ').trim();
-                    let newClasses = cardSizes[parseInt(s)].split(' '); 
-                    card.classList.add(...newClasses);
-                    // This dynamically moves the DOM element to its correct physical position
-                    grid.appendChild(card); 
-                }
-            });
         }
 
         function pingCloud() {
@@ -216,6 +202,23 @@
                 if(layoutOrder && Array.isArray(layoutOrder)) { currentLayoutOrder = layoutOrder; applyPublicLayout(); } 
             });
         }
+        
+        function applyPublicLayout() {
+            if (!currentLayoutOrder || currentLayoutOrder.length === 0) return;
+            const grid = document.getElementById('dashboard-grid'); 
+            currentLayoutOrder.forEach(item => { 
+                let id = typeof item === 'string' ? item : item.id; 
+                const card = document.getElementById(`public-card-${id}`); 
+                if(card) {
+                    let s = item.size || '0'; 
+                    card.setAttribute('data-size', s);
+                    card.className = card.className.replace(/\b(md:|lg:|xl:)?col-span-\d\b/g, '').replace(/\s+/g, ' ').trim();
+                    let newClasses = cardSizes[parseInt(s)].split(' '); 
+                    card.classList.add(...newClasses);
+                    grid.appendChild(card); 
+                }
+            });
+        }
 
         function sendRemoteCommand(cmd) { 
             if(!currentRoom) return; 
@@ -239,15 +242,16 @@
         
         function setMotor(id, action) { 
             let val = 0; 
+            let cwSpdEl = document.getElementById(`cw-spd-${id}`);
+            let ccwSpdEl = document.getElementById(`ccw-spd-${id}`);
+            
             if (action === 'ccw') { 
-                let el = document.getElementById(`ccw-spd-${id}`);
-                let spd = el ? (parseInt(el.value) || 0) : 255; 
-                val = -(spd > 255 ? 255 : (spd < 0 ? 0 : spd)); 
+                let spd = ccwSpdEl ? (parseInt(ccwSpdEl.value) || 0) : 255; 
+                val = -(spd); 
             } 
             else if (action === 'cw') { 
-                let el = document.getElementById(`cw-spd-${id}`);
-                let spd = el ? (parseInt(el.value) || 0) : 255; 
-                val = (spd > 255 ? 255 : (spd < 0 ? 0 : spd)); 
+                let spd = cwSpdEl ? (parseInt(cwSpdEl.value) || 0) : 255; 
+                val = (spd); 
             } 
             if (id === 'M1' || id === 'M2') { val = -val; }
 
@@ -358,12 +362,13 @@
                                 else mDisplayStr = mStart > 0 ? `CW (${Math.abs(mStart)})` : `CCW (${Math.abs(mStart)})`;
                             }
                             html += `<div id="val-${card.id}" class="text-2xl font-mono text-orange-400 font-bold mb-4 w-full text-center bg-black/30 py-3 rounded-xl border border-slate-700/50 shadow-inner drop-shadow-md">${mDisplayStr}</div>
+                                     <div class="flex gap-3 w-full mb-5"><div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CCW SPEED</label><input type="number" id="ccw-spd-${card.id}" value="${card.ccwSpd || 255}" readonly class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div><div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CW SPEED</label><input type="number" id="cw-spd-${card.id}" value="${card.cwSpd || 255}" readonly class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div></div>
                                      <div class="flex flex-col gap-3 w-full mt-auto">
                                          <div class="flex justify-center gap-3 w-full">
-                                             <button id="btn-ccw-${card.id}" onclick="if(!this.disabled) { sendMotorRemoteCommand('${card.id}', 'ccw'); }" class="flex-1 bg-yellow-600/90 hover:bg-yellow-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-yellow-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnCcw || "⏪ CCW"}</button>
-                                             <button id="btn-cw-${card.id}" onclick="if(!this.disabled) { sendMotorRemoteCommand('${card.id}', 'cw'); }" class="flex-1 bg-green-600/90 hover:bg-green-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-green-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnCw || "CW ⏩"}</button>
+                                             <button id="btn-ccw-${card.id}" onclick="if(!this.disabled) { setMotor('${card.id}', 'ccw'); }" class="flex-1 bg-yellow-600/90 hover:bg-yellow-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-yellow-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnCcw || "⏪ CCW"}</button>
+                                             <button id="btn-cw-${card.id}" onclick="if(!this.disabled) { setMotor('${card.id}', 'cw'); }" class="flex-1 bg-green-600/90 hover:bg-green-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-green-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnCw || "CW ⏩"}</button>
                                          </div>
-                                         <button id="btn-stop-${card.id}" onclick="if(!this.disabled) { sendMotorRemoteCommand('${card.id}', 'stop'); }" class="w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnStop || "⏹️ STOP"}</button>
+                                         <button id="btn-stop-${card.id}" onclick="if(!this.disabled) { setMotor('${card.id}', 'stop'); }" class="w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnStop || "⏹️ STOP"}</button>
                                      </div>`;
                         } else if (card.type === 'servo') {
                             let p1 = card.pos1Val !== undefined ? parseInt(card.pos1Val) : 0; let p2 = card.pos2Val !== undefined ? parseInt(card.pos2Val) : 180;
@@ -399,7 +404,7 @@
                                      <button id="btn-stop-${card.id}" onclick="if(!this.disabled) stopRemoteAudio('${card.id}')" class="w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnStop || "⏹️ STOP ALARM"}</button>`;
                         }
 
-                        html += `</div><div class="p-3 bg-black/20 border-t ${borderTheme} rounded-b-2xl flex justify-center"><input type="text" id="title-${card.id}" value="Custom Label" readonly class="w-full font-bold text-xs tracking-widest text-slate-400 uppercase bg-transparent border-none outline-none focus:ring-1 focus:ring-slate-500 rounded-md text-center placeholder-slate-600 cursor-pointer truncate" placeholder="NAME THIS CARD..."></div>`;
+                        html += `</div><div class="p-3 bg-black/20 border-t ${borderTheme} rounded-b-2xl flex justify-center"><input type="text" id="title-${card.id}" value="${card.title || 'Label'}" readonly class="w-full font-bold text-xs tracking-widest text-slate-400 uppercase bg-transparent border-none outline-none focus:ring-1 focus:ring-slate-500 rounded-md text-center placeholder-slate-600 cursor-pointer truncate"></div>`;
 
                         cardEl.innerHTML = html; gridEl.appendChild(cardEl);
                         
@@ -507,6 +512,19 @@
                 data: { labels: [], datasets: [{ data: [], borderColor: '#c084fc', tension: 0.3, pointRadius: 0, borderWidth: 2, fill: true, backgroundColor: 'rgba(192, 132, 252, 0.1)' }] }, 
                 options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } } 
             }); 
+        }
+        
+        function updateChartConfig(id) {
+            let yMinEl = document.getElementById(`ymin-${id}`);
+            let yMaxEl = document.getElementById(`ymax-${id}`);
+            if(!yMinEl || !yMaxEl) return;
+            const yMin = yMinEl.value; 
+            const yMax = yMaxEl.value; 
+            if(sensorCharts[id]) { 
+                if (yMin === "") delete sensorCharts[id].options.scales.y.min; else sensorCharts[id].options.scales.y.min = parseFloat(yMin); 
+                if (yMax === "") delete sensorCharts[id].options.scales.y.max; else sensorCharts[id].options.scales.y.max = parseFloat(yMax); 
+                sensorCharts[id].update('none'); 
+            }
         }
         
         function pushChartData(id, val) { 
