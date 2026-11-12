@@ -421,13 +421,17 @@ namespace makerlink {
     //% weight=67
     export function getDigitalValue(stream: MLDigitalStream): number { return digitalVals[stream]; }
 
-    /**
+/**
      * Read the latest Text Stream message received from the Web App
      */
     //% block="📝 MakerLink Text Stream $stream value"
     //% group="Read (Variables)"
     //% weight=66
-    export function getTextValue(stream: MLTextStream): string { return textVals[stream]; }
+    export function getTextValue(stream: MLTextStream): string { 
+        let val = textVals[stream];
+        textVals[stream] = ""; // Auto-clears the string so the micro:bit only scrolls it once!
+        return val; 
+    }
 
 
     // ==============================================
