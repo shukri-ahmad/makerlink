@@ -134,9 +134,7 @@
                 btn.innerHTML = "🔇 MUTED";
                 btn.classList.replace("bg-slate-700/90", "bg-red-900/80");
                 btn.classList.replace("border-slate-600/50", "border-red-800/50");
-                for (let id in audioPlayers) {
-                    if (audioPlayers[id]) { audioPlayers[id].pause(); audioPlayers[id].currentTime = 0; }
-                }
+                for (let id in audioPlayers) { if (audioPlayers[id]) { audioPlayers[id].pause(); audioPlayers[id].currentTime = 0; } }
             } else {
                 btn.innerHTML = "🔊 SOUND ON";
                 btn.classList.replace("bg-red-900/80", "bg-slate-700/90");
@@ -144,7 +142,7 @@
             }
         }
 
-        function pingCloud() {
+        function pingBluetooth() {
             const p = document.getElementById('ping-indicator');
             if(!p) return; p.className = "w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)] transition-colors duration-75";
             clearTimeout(p.timer); p.timer = setTimeout(() => { p.className = "w-3 h-3 rounded-full bg-slate-700 transition-colors duration-300"; }, 150);
@@ -412,12 +410,12 @@
                              <div class="flex-1 flex flex-col gap-1.5">
                                  <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">LIMIT 1</label>
                                  <div class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-blue-400 shadow-inner mb-1" id="pos1-val-display-${id}">${p1}</div>
-                                 <button id="btn-pos1-${id}" onclick="if(!isEditMode) setServoPos('${id}', 1)" class="w-full bg-blue-600/90 hover:bg-blue-500/90 text-white tracking-wider text-xs font-bold py-2 px-1 rounded-xl shadow-[0_0_12px_rgba(37,99,235,0.4)] active:scale-[0.97] transition-all border border-blue-500/50 cursor-pointer text-center focus:outline-none truncate">POS 1</button>
+                                 <button id="btn-pos1-${id}" onclick="if(!isEditMode) setServoPos('${id}', 1)" class="w-full bg-blue-600/90 hover:bg-blue-500/90 text-white tracking-wider text-xs font-bold py-2 px-1 rounded-xl shadow-[0_0_12px_rgba(37,99,235,0.4)] active:scale-[0.97] transition-all border border-blue-500/50 cursor-pointer text-center focus:outline-none truncate mt-1">POS 1</button>
                              </div>
                              <div class="flex-1 flex flex-col gap-1.5">
                                  <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">LIMIT 2</label>
                                  <div class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-blue-400 shadow-inner mb-1" id="pos2-val-display-${id}">${p2}</div>
-                                 <button id="btn-pos2-${id}" onclick="if(!isEditMode) setServoPos('${id}', 2)" class="w-full bg-blue-600/90 hover:bg-blue-500/90 text-white tracking-wider text-xs font-bold py-2 px-1 rounded-xl shadow-[0_0_12px_rgba(37,99,235,0.4)] active:scale-[0.97] transition-all border border-blue-500/50 cursor-pointer text-center focus:outline-none truncate">POS 2</button>
+                                 <button id="btn-pos2-${id}" onclick="if(!isEditMode) setServoPos('${id}', 2)" class="w-full bg-blue-600/90 hover:bg-blue-500/90 text-white tracking-wider text-xs font-bold py-2 px-1 rounded-xl shadow-[0_0_12px_rgba(37,99,235,0.4)] active:scale-[0.97] transition-all border border-blue-500/50 cursor-pointer text-center focus:outline-none truncate mt-1">POS 2</button>
                              </div>
                          </div>`;
             }
@@ -560,7 +558,7 @@
             isCloudActive = !isCloudActive; const btn = document.getElementById('btn-cloud');
             if (isCloudActive) {
                 cloudRoomId = Math.floor(1000 + Math.random() * 9000);
-                btn.innerHTML = `<svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2-2v8a2 2 0 002 2z"></path></svg> Live: ${cloudRoomId}`; 
+                btn.innerHTML = `<svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg> Live: ${cloudRoomId}`; 
                 btn.className = "active:scale-[0.97] transition-all bg-red-600/90 hover:bg-red-500 text-white font-bold py-2.5 px-5 rounded-xl min-w-[140px] shadow-[0_0_20px_rgba(220,38,38,0.6)] border border-red-500 flex items-center justify-center gap-2";
                 db.ref('rooms/' + cloudRoomId).remove(); saveLayoutOrder(); 
                 
@@ -610,7 +608,6 @@
                     if (isOut) { cardData.publicControl = cardPermissions[id] !== false; }
 
                     if (info.type === 'analog' && info.mode === 'IN') {
-                        // Safely grab chart time values
                         let timeEl = document.getElementById(`time-${id}`);
                         cardData.time = timeEl ? timeEl.value : "0";
                     } else if (info.type === 'servo') {
