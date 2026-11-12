@@ -23,9 +23,16 @@
         body:not(.is-editing) .maker-card { cursor: default; }
         body.is-editing .maker-card { cursor: grab; border-color: #facc15 !important; box-shadow: 0 0 15px rgba(250, 204, 21, 0.2); }
         body.is-editing .maker-card:active { cursor: grabbing; }
+        
         body.is-editing .ui-btn-editable { user-select: text !important; -webkit-user-select: text !important; }
+        
         .size-btns { display: none; }
         body.is-editing .size-btns { display: flex; }
+        
+        /* NEW: Hides custom input boxes until Edit Mode is activated */
+        .edit-only-flex { display: none; }
+        body.is-editing .edit-only-flex { display: flex; }
+        
         #msg-box { transition: opacity 0.3s, transform 0.3s; }
         #terminal-output::-webkit-scrollbar, .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         #terminal-output::-webkit-scrollbar-track, .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
@@ -122,7 +129,9 @@
                 btn.innerHTML = "🔇 MUTED";
                 btn.classList.replace("bg-slate-700/90", "bg-red-900/80");
                 btn.classList.replace("border-slate-600/50", "border-red-800/50");
-                for (let id in audioPlayers) { if (audioPlayers[id]) { audioPlayers[id].pause(); audioPlayers[id].currentTime = 0; } }
+                for (let id in audioPlayers) {
+                    if (audioPlayers[id]) { audioPlayers[id].pause(); audioPlayers[id].currentTime = 0; }
+                }
             } else {
                 btn.innerHTML = "🔊 SOUND ON";
                 btn.classList.replace("bg-red-900/80", "bg-slate-700/90");
@@ -462,15 +471,17 @@
                              <div class="flex justify-between w-full text-xs text-slate-500 font-mono tracking-widest"><span>0</span><span>1023</span></div>`;
                 } 
                 else if (type === 'digital' && mode === 'IN') {
-                    html += `<div id="val-${id}" class="w-28 h-28 rounded-full flex items-center justify-center text-xl font-bold tracking-wider transition-all duration-300 border-[4px] shadow-2xl mb-4 text-center leading-tight px-2 break-words">LOW</div>
-                             <div class="flex gap-4 w-full mt-auto">
+                    html += `<div class="flex-1 flex items-center justify-center w-full">
+                                 <div id="val-${id}" class="w-28 h-28 rounded-full flex items-center justify-center text-xl font-bold tracking-wider transition-all duration-300 border-[4px] shadow-2xl text-center leading-tight px-2 break-words">LOW</div>
+                             </div>
+                             <div class="edit-only-flex gap-4 w-full mt-auto pt-4">
                                  <div class="flex-1 flex flex-col gap-1.5">
                                      <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">LOW TEXT</label>
-                                     <input type="text" id="label-low-${id}" value="LOW" readonly oninput="updateDigitalUI('${id}', advancedData['${id}'])" class="ui-editable w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-emerald-400 shadow-inner">
+                                     <input type="text" id="label-low-${id}" value="LOW" readonly class="ui-editable w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-emerald-400 shadow-inner">
                                  </div>
                                  <div class="flex-1 flex flex-col gap-1.5">
                                      <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">HIGH TEXT</label>
-                                     <input type="text" id="label-high-${id}" value="HIGH" readonly oninput="updateDigitalUI('${id}', advancedData['${id}'])" class="ui-editable w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-emerald-400 shadow-inner">
+                                     <input type="text" id="label-high-${id}" value="HIGH" readonly class="ui-editable w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-emerald-400 shadow-inner">
                                  </div>
                              </div>`;
                 } 
