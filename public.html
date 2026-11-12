@@ -128,7 +128,7 @@
 
         function pingCloud() {
             const p = document.getElementById('ping-indicator');
-            if(!p) return; p.className = "w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)] transition-colors duration-75";
+            if(!p) return; p.className = "w-3 h-3 rounded-full bg-purple-400 shadow-[0_0_12px_rgba(192,132,252,0.9)] transition-colors duration-75";
             clearTimeout(p.timer); p.timer = setTimeout(() => { p.className = "w-3 h-3 rounded-full bg-slate-700 transition-colors duration-300"; }, 150);
             clearTimeout(watchdogTimer); watchdogTimer = setTimeout(() => { p.className = "w-3 h-3 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.9)] transition-colors duration-300"; }, 2500); 
         }
@@ -179,6 +179,8 @@
                 } 
             });
             
+            db.ref('rooms/' + currentRoom + '/logs').on('child_added', (snap) => { const log = snap.val(); if (log) appendTerminal(log.msg, log.time, log.color); });
+            
             db.ref('rooms/' + currentRoom + '/layout').on('value', (snap) => { 
                 const layoutOrder = snap.val(); 
                 if(layoutOrder && Array.isArray(layoutOrder)) { currentLayoutOrder = layoutOrder; applyPublicLayout(); } 
@@ -209,6 +211,41 @@
         function stopRemoteAudio(id) { sendRemoteCommand(`${id}:STOP`); }
         function updateVolume(id, val) { audioVolumes[id] = val; if(audioPlayers[id]) audioPlayers[id].volume = val; }
 
+        function setServoPos(id, posNum) { 
+            let textEl = document.getElementById(`pos${posNum}-val-display-${id}`);
+            if (!textEl) return;
+            let targetVal = parseInt(textEl.innerText) || 0; 
+            const slider = document.getElementById(`slider-${id}`); 
+            if (slider) slider.value = targetVal; 
+            updateVal(id, targetVal); 
+            sendRemoteCommand(`${id}:${targetVal}`); 
+        }
+        
+        function setMotor(id, action) { 
+            let val = 0; 
+            if (action === 'ccw') { 
+                let el = document.getElementById(`ccw-spd-${id}`);
+                let spd = el ? (parseInt(el.value) || 0) : 255; 
+                val = -(spd > 255 ? 255 : (spd < 0 ? 0 : spd)); 
+            } 
+            else if (action === 'cw') { 
+                let el = document.getElementById(`cw-spd-${id}`);
+                let spd = el ? (parseInt(el.value) || 0) : 255; 
+                val = (spd > 255 ? 255 : (spd < 0 ? 0 : spd)); 
+            } 
+            if (id === 'M1' || id === 'M2') { val = -val; }
+
+            let displayStr = 'STOP (0)';
+            if (val !== 0) {
+                if (id === 'M1' || id === 'M2') displayStr = val < 0 ? `CW (${Math.abs(val)})` : `CCW (${Math.abs(val)})`;
+                else displayStr = val > 0 ? `CW (${Math.abs(val)})` : `CCW (${Math.abs(val)})`;
+            }
+            let textEl = document.getElementById(`val-${id}`);
+            if (textEl) textEl.innerText = displayStr; 
+            advancedData[id] = val; 
+            sendRemoteCommand(`${id}:${val}`); 
+        }
+
         function updateDigitalUI(id, val) {
             let v = Number(val); advancedData[id] = v; let valIn = document.getElementById(`val-${id}`);
             if(valIn) { 
@@ -221,7 +258,7 @@
                 if(v === 1) { valOut.style.backgroundColor = '#2563eb'; valOut.style.borderColor = '#60a5fa'; valOut.style.boxShadow = '0 0 25px rgba(37, 99, 235, 0.8)'; } 
                 else { valOut.style.backgroundColor = 'rgba(0,0,0,0.4)'; valOut.style.borderColor = '#334155'; valOut.style.boxShadow = 'inset 0 4px 6px rgba(0, 0, 0, 0.6)'; } 
             }
-            let card = document.getElementById(`public-card-${id}`);
+            let card = document.getElementById(`card-${id}`);
             if(card) { if(v === 1) card.style.boxShadow = '0 0 20px rgba(16, 185, 129, 0.15)'; else card.style.boxShadow = ''; }
         }
 
@@ -230,6 +267,8 @@
             if(elOut) { elOut.innerText = v; elOut.style.color = getAnalogColor(v); }
             let sl = document.getElementById(`slider-${id}`); if(sl && sl.value != v) sl.value = v;
         }
+
+        function updateVal(id, val) { let valEl = document.getElementById(`val-${id}`); if(valEl) valEl.innerText = val + (id.startsWith('S') ? '°' : ''); advancedData[id] = Number(val) || val; }
 
         function renderSharedCards(sharedCards) {
             const gridEl = document.getElementById('dashboard-grid');
@@ -267,11 +306,11 @@
                                          <canvas id="chart-${card.id}" class="absolute inset-0 w-full h-full opacity-70"></canvas>
                                      </div>
                                      <div class="flex gap-3 w-full mt-auto">
-                                        <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MIN</label><input type="number" id="ymin-${card.id}" value="" placeholder="Auto" readonly onchange="updateSensorChartConfig('${card.id}')" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
-                                        <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MAX</label><input type="number" id="ymax-${card.id}" value="" placeholder="Auto" readonly onchange="updateSensorChartConfig('${card.id}')" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
+                                        <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MIN</label><input type="number" id="ymin-${card.id}" value="" placeholder="Auto" readonly onchange="updateChartConfig('${card.id}')" class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
+                                        <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MAX</label><input type="number" id="ymax-${card.id}" value="" placeholder="Auto" readonly onchange="updateChartConfig('${card.id}')" class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
                                         <div class="flex-1 flex flex-col">
                                             <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">TIME</label>
-                                            <select id="time-${card.id}" disabled class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300 appearance-none">
+                                            <select id="time-${card.id}" disabled onchange="updateChartConfig('${card.id}')" class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300 appearance-none">
                                                 <option value="0">All</option><option value="900000">15m</option><option value="3600000">1h</option><option value="14400000">4h</option>
                                             </select>
                                         </div>
@@ -285,13 +324,13 @@
                         } else if (card.type === 'digital' && card.mode === 'OUT') {
                             html += `<div class="flex-1 flex items-center justify-center w-full"><div id="val-out-${card.id}" class="w-24 h-24 rounded-2xl transition-all duration-300 border-[3px] shadow-2xl"></div></div>
                                      <div class="flex gap-3 w-full mt-auto">
-                                         <button id="btn-off-${card.id}" onclick="if(!this.disabled) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }" class="ui-btn-editable flex-1 py-3 px-2 bg-slate-800/80 hover:bg-slate-700/80 rounded-xl text-slate-400 font-bold tracking-widest text-sm shadow-lg active:scale-[0.97] transition-all border border-slate-700/50 text-center cursor-pointer focus:outline-none truncate">${card.btnOff || "OFF"}</button>
-                                         <button id="btn-on-${card.id}" onclick="if(!this.disabled) { sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1); }" class="ui-btn-editable flex-1 py-3 px-2 bg-red-600/90 hover:bg-red-500/90 rounded-xl text-white font-bold tracking-widest text-sm shadow-[0_0_15px_rgba(220,38,38,0.4)] active:scale-[0.97] transition-all border border-red-500/50 text-center cursor-pointer focus:outline-none truncate">${card.btnOn || "ON"}</button>
+                                         <button id="btn-off-${card.id}" onclick="if(!this.disabled) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }" class="flex-1 py-3 px-2 bg-slate-800/80 hover:bg-slate-700/80 rounded-xl text-slate-400 font-bold tracking-widest text-sm shadow-lg active:scale-[0.97] transition-all border border-slate-700/50 text-center cursor-pointer focus:outline-none truncate">${card.btnOff || "OFF"}</button>
+                                         <button id="btn-on-${card.id}" onclick="if(!this.disabled) { sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1); }" class="flex-1 py-3 px-2 bg-red-600/90 hover:bg-red-500/90 rounded-xl text-white font-bold tracking-widest text-sm shadow-[0_0_15px_rgba(220,38,38,0.4)] active:scale-[0.97] transition-all border border-red-500/50 text-center cursor-pointer focus:outline-none truncate">${card.btnOn || "ON"}</button>
                                      </div>`;
                         } else if (card.type === 'digital' && card.mode === 'PUSH') {
                             html += `<div class="flex-1 flex items-center justify-center w-full"><div id="val-out-${card.id}" class="w-24 h-24 rounded-full transition-all duration-300 border-[3px] shadow-2xl"></div></div>
                                      <div class="flex w-full mt-auto">
-                                         <button id="btn-push-${card.id}" onmousedown="if(!this.disabled) { sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1); }" onmouseup="if(!this.disabled) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }" onmouseleave="if(!this.disabled && advancedData['${card.id}'] == 1) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }" ontouchstart="if(!this.disabled) { sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1); }" ontouchend="if(!this.disabled) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }" class="ui-btn-editable w-full py-4 px-2 bg-purple-600/90 hover:bg-purple-500/90 rounded-xl text-white font-bold tracking-widest text-lg shadow-[0_0_20px_rgba(147,51,234,0.4)] active:scale-[0.97] transition-all border border-purple-500/50 text-center cursor-pointer focus:outline-none truncate select-none">${card.btnPush || "HOLD"}</button>
+                                         <button id="btn-push-${card.id}" onmousedown="if(!this.disabled) { sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1); }" onmouseup="if(!this.disabled) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }" onmouseleave="if(!this.disabled && advancedData['${card.id}'] == 1) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }" ontouchstart="if(!this.disabled) { sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1); }" ontouchend="if(!this.disabled) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }" class="w-full py-4 px-2 bg-purple-600/90 hover:bg-purple-500/90 rounded-xl text-white font-bold tracking-widest text-lg shadow-[0_0_20px_rgba(147,51,234,0.4)] active:scale-[0.97] transition-all border border-purple-500/50 text-center cursor-pointer focus:outline-none truncate select-none">${card.btnPush || "HOLD"}</button>
                                      </div>`;
                         } else if (card.type === 'text') {
                             let displayTxt = card.val !== undefined ? card.val : "";
@@ -305,10 +344,10 @@
                             html += `<div id="val-${card.id}" class="text-2xl font-mono text-orange-400 font-bold mb-4 w-full text-center bg-black/30 py-3 rounded-xl border border-slate-700/50 shadow-inner drop-shadow-md">${mDisplayStr}</div>
                                      <div class="flex flex-col gap-3 w-full mt-auto">
                                          <div class="flex justify-center gap-3 w-full">
-                                             <button id="btn-ccw-${card.id}" onclick="if(!this.disabled) { sendMotorRemoteCommand('${card.id}', 'ccw'); }" class="ui-btn-editable flex-1 bg-yellow-600/90 hover:bg-yellow-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-yellow-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnCcw || "⏪ CCW"}</button>
-                                             <button id="btn-cw-${card.id}" onclick="if(!this.disabled) { sendMotorRemoteCommand('${card.id}', 'cw'); }" class="ui-btn-editable flex-1 bg-green-600/90 hover:bg-green-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-green-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnCw || "CW ⏩"}</button>
+                                             <button id="btn-ccw-${card.id}" onclick="if(!this.disabled) { setMotor('${card.id}', 'ccw'); }" class="flex-1 bg-yellow-600/90 hover:bg-yellow-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-yellow-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnCcw || "⏪ CCW"}</button>
+                                             <button id="btn-cw-${card.id}" onclick="if(!this.disabled) { setMotor('${card.id}', 'cw'); }" class="flex-1 bg-green-600/90 hover:bg-green-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-green-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnCw || "CW ⏩"}</button>
                                          </div>
-                                         <button id="btn-stop-${card.id}" onclick="if(!this.disabled) { sendMotorRemoteCommand('${card.id}', 'stop'); }" class="ui-btn-editable w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnStop || "⏹️ STOP"}</button>
+                                         <button id="btn-stop-${card.id}" onclick="if(!this.disabled) { setMotor('${card.id}', 'stop'); }" class="w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnStop || "⏹️ STOP"}</button>
                                      </div>`;
                         } else if (card.type === 'servo') {
                             let p1 = card.pos1Val !== undefined ? parseInt(card.pos1Val) : 0; let p2 = card.pos2Val !== undefined ? parseInt(card.pos2Val) : 180;
@@ -321,12 +360,12 @@
                                          <div class="flex-1 flex flex-col gap-1.5">
                                              <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">LIMIT 1</label>
                                              <div class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-blue-400 shadow-inner mb-1" id="pos1-val-display-${card.id}">${p1}</div>
-                                             <button id="btn-pos1-${card.id}" onclick="if(!this.disabled) { sendRemoteCommand('${card.id}:POS1'); }" class="ui-btn-editable w-full bg-blue-600/90 hover:bg-blue-500/90 text-white tracking-wider text-xs font-bold py-2 px-1 rounded-xl shadow-[0_0_12px_rgba(37,99,235,0.4)] active:scale-[0.97] transition-all border border-blue-500/50 cursor-pointer text-center focus:outline-none truncate mt-1">${card.btnPos1 || 'POS 1'}</button>
+                                             <button id="btn-pos1-${card.id}" onclick="if(!this.disabled) { setServoPos('${card.id}', 1); }" class="w-full bg-blue-600/90 hover:bg-blue-500/90 text-white tracking-wider text-xs font-bold py-2 px-1 rounded-xl shadow-[0_0_12px_rgba(37,99,235,0.4)] active:scale-[0.97] transition-all border border-blue-500/50 cursor-pointer text-center focus:outline-none truncate mt-1">${card.btnPos1 || 'POS 1'}</button>
                                          </div>
                                          <div class="flex-1 flex flex-col gap-1.5">
                                              <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">LIMIT 2</label>
                                              <div class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-blue-400 shadow-inner mb-1" id="pos2-val-display-${card.id}">${p2}</div>
-                                             <button id="btn-pos2-${card.id}" onclick="if(!this.disabled) { sendRemoteCommand('${card.id}:POS2'); }" class="ui-btn-editable w-full bg-blue-600/90 hover:bg-blue-500/90 text-white tracking-wider text-xs font-bold py-2 px-1 rounded-xl shadow-[0_0_12px_rgba(37,99,235,0.4)] active:scale-[0.97] transition-all border border-blue-500/50 cursor-pointer text-center focus:outline-none truncate mt-1">${card.btnPos2 || 'POS 2'}</button>
+                                             <button id="btn-pos2-${card.id}" onclick="if(!this.disabled) { setServoPos('${card.id}', 2); }" class="w-full bg-blue-600/90 hover:bg-blue-500/90 text-white tracking-wider text-xs font-bold py-2 px-1 rounded-xl shadow-[0_0_12px_rgba(37,99,235,0.4)] active:scale-[0.97] transition-all border border-blue-500/50 cursor-pointer text-center focus:outline-none truncate mt-1">${card.btnPos2 || 'POS 2'}</button>
                                          </div>
                                      </div>`;
                         } else if (card.type === 'audio') {
@@ -341,7 +380,7 @@
                                          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
                                          <input type="range" id="vol-${card.id}" min="0" max="1" step="0.1" value="0.5" oninput="updateVolume('${card.id}', this.value)" class="flex-1">
                                      </div>
-                                     <button id="btn-stop-${card.id}" onclick="if(!this.disabled) stopRemoteAudio('${card.id}')" class="ui-btn-editable w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">⏹️ STOP ALARM</button>`;
+                                     <button id="btn-stop-${card.id}" onclick="if(!this.disabled) stopRemoteAudio('${card.id}')" class="w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">⏹️ STOP ALARM</button>`;
                         }
 
                         html += `</div><div id="title-${card.id}" class="p-3 bg-black/20 border-t ${borderTheme} rounded-b-2xl flex justify-center text-xs font-bold tracking-widest text-slate-400 uppercase cursor-default truncate">${card.title || 'Label'}</div>`;
@@ -438,14 +477,48 @@
             applyPublicLayout();
         }
 
-        function initChart(id) { const ctx = document.getElementById(`chart-${id}`).getContext('2d'); sensorCharts[id] = new Chart(ctx, { type: 'line', data: { labels: [], datasets: [{ data: [], borderColor: '#c084fc', tension: 0.3, pointRadius: 0, borderWidth: 2, fill: true, backgroundColor: 'rgba(192, 132, 252, 0.1)' }] }, options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } } }); }
+        function initChart(id) { 
+            const ctx = document.getElementById(`chart-${id}`).getContext('2d'); 
+            sensorCharts[id] = new Chart(ctx, { 
+                type: 'line', 
+                data: { labels: [], datasets: [{ data: [], borderColor: '#c084fc', tension: 0.3, pointRadius: 0, borderWidth: 2, fill: true, backgroundColor: 'rgba(192, 132, 252, 0.1)' }] }, 
+                options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } } 
+            }); 
+        }
+        
+        function updateChartConfig(id) {
+            const yMin = document.getElementById(`ymin-${id}`).value; 
+            const yMax = document.getElementById(`ymax-${id}`).value; 
+            if(sensorCharts[id]) { 
+                if (yMin === "") delete sensorCharts[id].options.scales.y.min; else sensorCharts[id].options.scales.y.min = parseFloat(yMin); 
+                if (yMax === "") delete sensorCharts[id].options.scales.y.max; else sensorCharts[id].options.scales.y.max = parseFloat(yMax); 
+                sensorCharts[id].update('none'); 
+            }
+        }
         
         function pushChartData(id, val) { 
-            if(!sensorCharts[id]) return; const chart = sensorCharts[id]; const timeEl = document.getElementById(`time-${id}`); const windowMs = (timeEl && timeEl.value !== "") ? parseInt(timeEl.value) : 0; 
-            let now = Date.now(); chart.data.labels.push(now); chart.data.datasets[0].data.push(val); 
-            if(windowMs > 0) { let cutoff = now - windowMs; while(chart.data.labels.length > 0 && chart.data.labels[0] < cutoff) { chart.data.labels.shift(); chart.data.datasets[0].data.shift(); } } 
-            if (chart.data.labels.length > 1500) { chart.data.labels.shift(); chart.data.datasets[0].data.shift(); }
-            chart.update(); 
+            if(!sensorCharts[id]) return; 
+            const chart = sensorCharts[id]; 
+            const timeEl = document.getElementById(`time-${id}`); 
+            const windowMs = (timeEl && timeEl.value !== "") ? parseInt(timeEl.value) : 0; 
+            
+            let now = Date.now(); 
+            chart.data.labels.push(now); 
+            chart.data.datasets[0].data.push(val); 
+            
+            if(windowMs > 0) { 
+                let cutoff = now - windowMs; 
+                while(chart.data.labels.length > 0 && chart.data.labels[0] < cutoff) { 
+                    chart.data.labels.shift(); 
+                    chart.data.datasets[0].data.shift(); 
+                } 
+            } else {
+                if (chart.data.labels.length > 200) { 
+                    chart.data.labels.shift(); 
+                    chart.data.datasets[0].data.shift(); 
+                }
+            }
+            chart.update('none'); 
         }
     </script>
 </body>
