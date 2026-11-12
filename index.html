@@ -124,9 +124,7 @@
                 btn.innerHTML = "🔇 MUTED";
                 btn.classList.replace("bg-slate-700/90", "bg-red-900/80");
                 btn.classList.replace("border-slate-600/50", "border-red-800/50");
-                for (let id in audioPlayers) {
-                    if (audioPlayers[id]) { audioPlayers[id].pause(); audioPlayers[id].currentTime = 0; }
-                }
+                for (let id in audioPlayers) { if (audioPlayers[id]) { audioPlayers[id].pause(); audioPlayers[id].currentTime = 0; } }
             } else {
                 btn.innerHTML = "🔊 SOUND ON";
                 btn.classList.replace("bg-red-900/80", "bg-slate-700/90");
@@ -336,7 +334,7 @@
         }
 
         function updateVal(id, val) { let valEl = document.getElementById(`val-${id}`); if(valEl) valEl.innerText = val + (id.startsWith('S') ? '°' : ''); advancedData[id] = Number(val) || val; }
-        
+
         function updateTextUI(id, val) {
             let container = document.getElementById(`text-container-${id}`);
             if(!container) return;
@@ -349,9 +347,10 @@
             document.body.removeChild(span);
 
             if (isLong) {
-                container.innerHTML = `<marquee id="val-${id}" scrollamount="5" class="w-full text-3xl font-bold tracking-tight text-pink-400 drop-shadow-md">${escapeHTML(val)}</marquee>`;
+                // FIXED: Enforce min-w-full and let it stretch!
+                container.innerHTML = `<marquee id="val-${id}" scrollamount="6" class="w-full min-w-full text-3xl font-bold tracking-tight text-pink-400 drop-shadow-md leading-tight pt-1">${escapeHTML(val)}</marquee>`;
             } else {
-                container.innerHTML = `<div id="val-${id}" class="w-full text-center text-3xl font-bold tracking-tight text-pink-400 drop-shadow-md truncate">${escapeHTML(val)}</div>`;
+                container.innerHTML = `<div id="val-${id}" class="w-full text-center text-3xl font-bold tracking-tight text-pink-400 drop-shadow-md truncate leading-tight pt-1">${escapeHTML(val)}</div>`;
             }
         }
 
@@ -359,7 +358,8 @@
             let el = document.getElementById(`text-input-${id}`);
             if(el && el.value.trim() !== '') {
                 sendBluetoothCommand(`${id}:${el.value}`);
-                el.value = ''; 
+                advancedData[id] = el.value; // Temporarily saves to state so UI feels responsive
+                el.value = ''; // Clears box
             }
         }
 
@@ -538,8 +538,8 @@
                 }
                 else if (type === 'text') {
                     let displayTxt = startVals && startVals[0] !== undefined ? startVals[0] : "";
-                    html += `<div class="w-full flex-1 flex p-4 bg-black/20 rounded-xl border border-slate-700/50 overflow-hidden items-center justify-center" id="text-container-${id}">
-                                 <div id="val-${id}" class="whitespace-nowrap text-3xl font-bold tracking-tight text-pink-400 drop-shadow-md">${displayTxt}</div>
+                    html += `<div class="w-full flex-1 flex p-4 bg-black/20 rounded-xl border border-slate-700/50 overflow-hidden items-center" id="text-container-${id}">
+                                 <div id="val-${id}" class="w-full text-center whitespace-nowrap text-3xl font-bold tracking-tight text-pink-400 drop-shadow-md truncate leading-tight pt-1">${displayTxt}</div>
                              </div>`;
                 }
                 else if (type === 'motor') {
@@ -556,7 +556,7 @@
                     html += `<div class="flex-1 flex items-center justify-center w-full">
                                  <div id="val-${id}" class="text-3xl font-mono text-orange-400 font-bold w-full text-center bg-black/30 py-4 px-6 rounded-xl border border-slate-700/50 shadow-inner drop-shadow-md">${mDisplayStr}</div>
                              </div>
-                             <div class="flex gap-3 w-full mb-4">
+                             <div class="flex gap-3 w-full mb-4 mt-auto">
                                  <div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CCW SPEED (MAX ${mCCW})</label><input type="number" id="ccw-spd-${id}" value="${mCCW}" max="${mCCW}" min="0" readonly oninput="if(parseInt(this.value) > parseInt(this.max)) this.value = this.max; if(parseInt(this.value) < 0) this.value = 0;" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div>
                                  <div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CW SPEED (MAX ${mCW})</label><input type="number" id="cw-spd-${id}" value="${mCW}" max="${mCW}" min="0" readonly oninput="if(parseInt(this.value) > parseInt(this.max)) this.value = this.max; if(parseInt(this.value) < 0) this.value = 0;" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div>
                              </div>
@@ -576,7 +576,7 @@
                     html += `<div class="flex-1 flex items-center justify-center w-full">
                                  <div id="val-${id}" class="text-6xl font-mono text-blue-400 font-black tracking-tighter drop-shadow-[0_0_15px_rgba(96,165,250,0.5)]">${sVal}°</div>
                              </div>
-                             <input type="range" id="slider-${id}" min="${minBound}" max="${maxBound}" value="${sVal}" oninput="if(!this.disabled) { updateVal('${id}', this.value); sendBluetoothCommand('${id}:'+this.value); }" class="w-full mb-6">
+                             <input type="range" id="slider-${id}" min="${minBound}" max="${maxBound}" value="${sVal}" oninput="if(!this.disabled) { updateVal('${id}', this.value); sendBluetoothCommand('${id}:'+this.value); }" class="w-full mb-6 mt-4">
                              <div class="flex gap-4 w-full">
                                  <div class="flex-1 flex flex-col gap-1.5">
                                      <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">LIMIT 1</label>
