@@ -27,6 +27,10 @@
         
         .size-btns { display: none; }
         body.is-editing .size-btns { display: flex; }
+        
+        .edit-only-flex { display: none; }
+        body.is-editing .edit-only-flex { display: flex; }
+        
         #msg-box { transition: opacity 0.3s, transform 0.3s; }
         #terminal-output::-webkit-scrollbar, .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         #terminal-output::-webkit-scrollbar-track, .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
@@ -86,6 +90,8 @@
     </div>
 
     <script>
+        localStorage.removeItem('makerlink_public_layout');
+
         const firebaseConfig = { apiKey: "AIzaSyAMLoInCYEYyT97RtkjW6rnT0lKTu7_xik", authDomain: "makerlink-b575b.firebaseapp.com", databaseURL: "https://makerlink-b575b-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "makerlink-b575b", storageBucket: "makerlink-b575b.firebasestorage.app" };
         firebase.initializeApp(firebaseConfig); const db = firebase.database();
         
@@ -297,7 +303,7 @@
                 if(v === 1) { valOut.style.backgroundColor = '#2563eb'; valOut.style.borderColor = '#60a5fa'; valOut.style.boxShadow = '0 0 25px rgba(37, 99, 235, 0.8)'; } 
                 else { valOut.style.backgroundColor = 'rgba(0,0,0,0.4)'; valOut.style.borderColor = '#334155'; valOut.style.boxShadow = 'inset 0 4px 6px rgba(0, 0, 0, 0.6)'; } 
             }
-            let card = document.getElementById(`card-${id}`);
+            let card = document.getElementById(`public-card-${id}`);
             if(card) { if(v === 1) card.style.boxShadow = '0 0 20px rgba(16, 185, 129, 0.15)'; else card.style.boxShadow = ''; }
         }
 
@@ -360,8 +366,10 @@
                                      <div class="flex justify-between w-full text-xs text-slate-500 font-mono tracking-widest"><span>0</span><span>1023</span></div>`;
                         } else if (card.type === 'digital' && card.mode === 'IN') {
                             let textVal = card.val === 1 ? (card.labelHigh || 'HIGH') : (card.labelLow || 'LOW');
-                            html += `<div id="val-${card.id}" class="w-28 h-28 rounded-full flex items-center justify-center text-xl font-bold tracking-wider transition-all duration-300 border-[4px] shadow-2xl mb-4 text-center leading-tight px-2 break-words">${textVal}</div>
-                                     <div class="flex gap-4 w-full mt-auto">
+                            html += `<div class="flex-1 flex items-center justify-center w-full">
+                                         <div id="val-${card.id}" class="w-28 h-28 rounded-full flex items-center justify-center text-xl font-bold tracking-wider transition-all duration-300 border-[4px] shadow-2xl text-center leading-tight px-2 break-words">${textVal}</div>
+                                     </div>
+                                     <div class="edit-only-flex gap-4 w-full mt-auto pt-4">
                                          <div class="flex-1 flex flex-col gap-1.5">
                                              <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">LOW TEXT</label>
                                              <input type="text" id="label-low-${card.id}" value="${card.labelLow || 'LOW'}" readonly class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-emerald-400 shadow-inner">
@@ -434,7 +442,7 @@
                                      <button id="btn-stop-${card.id}" onclick="if(!this.disabled) stopRemoteAudio('${card.id}')" class="w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnStop || "⏹️ STOP ALARM"}</button>`;
                         }
 
-                        html += `</div><div class="p-3 bg-black/20 border-t ${borderTheme} rounded-b-2xl flex justify-center"><input type="text" id="title-${card.id}" value="Custom Label" readonly class="w-full font-bold text-xs tracking-widest text-slate-400 uppercase bg-transparent border-none outline-none focus:ring-1 focus:ring-slate-500 rounded-md text-center placeholder-slate-600 cursor-pointer truncate"></div>`;
+                        html += `</div><div class="p-3 bg-black/20 border-t ${borderTheme} rounded-b-2xl flex justify-center"><input type="text" id="title-${card.id}" value="${card.title || 'Label'}" readonly class="w-full font-bold text-xs tracking-widest text-slate-400 uppercase bg-transparent border-none outline-none focus:ring-1 focus:ring-slate-500 rounded-md text-center placeholder-slate-600 cursor-pointer truncate"></div>`;
 
                         cardEl.innerHTML = html; gridEl.appendChild(cardEl);
                         
