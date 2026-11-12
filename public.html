@@ -165,18 +165,25 @@
             localStorage.setItem('makerlink_public_layout', JSON.stringify(finalOrder)); 
         }
 
-        function applySavedLayout() { 
-            const saved = JSON.parse(localStorage.getItem('makerlink_public_layout') || '[]'); 
-            const gridEl = document.getElementById('dashboard-grid');
-            saved.forEach(item => { 
-                let id = typeof item === 'string' ? item : item.id; const card = document.getElementById(`public-card-${id}`); 
-                if (card) { 
-                    let s = item.size || '0'; card.setAttribute('data-size', s);
+        function applyPublicLayout() {
+            let localSaved = JSON.parse(localStorage.getItem('makerlink_public_layout') || '[]');
+            let orderToApply = localSaved.length > 0 ? localSaved : currentLayoutOrder;
+            
+            if (!orderToApply || orderToApply.length === 0) return;
+            
+            const grid = document.getElementById('dashboard-grid'); 
+            orderToApply.forEach(item => { 
+                let id = typeof item === 'string' ? item : item.id; 
+                const card = document.getElementById(`public-card-${id}`); 
+                if(card) {
+                    let s = item.size || '0'; 
+                    card.setAttribute('data-size', s);
                     card.className = card.className.replace(/\b(md:|lg:|xl:)?col-span-\d\b/g, '').replace(/\s+/g, ' ').trim();
-                    let newClasses = cardSizes[parseInt(s)].split(' '); card.classList.add(...newClasses);
-                    gridEl.appendChild(card); 
-                } 
-            }); 
+                    let newClasses = cardSizes[parseInt(s)].split(' '); 
+                    card.classList.add(...newClasses);
+                    grid.appendChild(card); 
+                }
+            });
         }
         
         function toggleEditMode() {
@@ -189,7 +196,6 @@
                 btn.innerHTML = `Save Layout`; 
                 btn.className = "active:scale-[0.97] transition-all bg-yellow-500/90 hover:bg-yellow-400 text-yellow-950 font-bold py-2.5 px-4 rounded-xl shadow-[0_0_15px_rgba(234,179,8,0.5)] border border-yellow-400 flex items-center justify-center gap-2";
                 
-                // MAKE BUTTONS EDITABLE LOCALLY ON PUBLIC SIDE
                 document.querySelectorAll('.ui-editable, .ui-btn-editable, .ui-editable-num').forEach(el => { 
                     if (el.tagName === 'BUTTON') {
                         el.contentEditable = "true";
@@ -206,7 +212,6 @@
                 btn.innerHTML = `Edit Layout`; 
                 btn.className = "active:scale-[0.97] transition-all bg-slate-700/90 hover:bg-slate-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg border border-slate-600/50 flex items-center justify-center gap-2";
                 
-                // LOCK BUTTONS
                 document.querySelectorAll('.ui-editable, .ui-btn-editable, .ui-editable-num').forEach(el => { 
                     if (el.tagName === 'BUTTON') {
                         el.contentEditable = "false";
