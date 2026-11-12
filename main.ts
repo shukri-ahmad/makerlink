@@ -8,6 +8,7 @@ namespace makerlink {
     export enum MotorID { M1, M2, M3, M4 }
     export enum ServoID { S1, S2, S3, S4, S5, S6, S7, S8 }
     export enum MLPinMode { IN, OUT, PUSH }
+    export enum MLPinModeText { IN, OUT }
     export enum MLAnalogStream { A1, A2, A3, A4, A5, A6, A7, A8 }
     export enum MLDigitalStream { D1, D2, D3, D4, D5, D6, D7, D8 }
     export enum MLTextStream { T1, T2, T3, T4 }
@@ -48,6 +49,7 @@ namespace makerlink {
     
     let analogVals = [0, 0, 0, 0, 0, 0, 0, 0];
     let digitalVals = [0, 0, 0, 0, 0, 0, 0, 0];
+    let textVals = ["", "", "", ""];
 
     // ==============================================
     // UTILITIES
@@ -91,7 +93,8 @@ namespace makerlink {
         let parts = cmd.split(':');
         if (parts.length < 2) return;
         let id = parts[0];
-        let val = parseInt(parts[1]);
+        let valStr = parts[1];
+        let val = parseInt(valStr);
 
         if (id.charAt(0) == 'M') {
             let idx = parseInt(id.charAt(1)) - 1;
@@ -113,6 +116,9 @@ namespace makerlink {
         } else if (id.charAt(0) == 'D') {
             let idx = parseInt(id.charAt(1)) - 1;
             if (idx >= 0 && idx <= 7) digitalVals[idx] = val;
+        } else if (id.charAt(0) == 'T') {
+            let idx = parseInt(id.charAt(1)) - 1;
+            if (idx >= 0 && idx <= 3) textVals[idx] = valStr;
         }
     }
 
@@ -156,27 +162,27 @@ namespace makerlink {
             let cmd = bluetooth.uartReadUntil(serial.delimiters(Delimiters.NewLine)).trim();
             
             if (cmd === "SYNC") {
-                // FIX: Running this inside a background thread prevents MakeCode from crashing due to pauses!
                 control.inBackground(function() {
                     for(let i=0; i<initCommands.length; i++) {
                         bluetooth.uartWriteString(initCommands[i] + "\n");
-                        basic.pause(50); // Now safe to pause!
+                        basic.pause(50);
                     }
                     
                     for(let i=0; i<initCommands.length; i++) {
                         let parts = initCommands[i].split(":");
                         if (parts.length >= 2) {
                             let id = parts[1].split(",")[0];
-                            let val = 0;
+                            let valStr = "";
                             let valid = false;
                             
-                            if (id.charAt(0) == 'M') { val = motorVals[parseInt(id.charAt(1)) - 1]; valid = true; }
-                            else if (id.charAt(0) == 'S') { val = servoVals[parseInt(id.charAt(1)) - 1]; valid = true; }
-                            else if (id.charAt(0) == 'A') { val = analogVals[parseInt(id.charAt(1)) - 1]; valid = true; }
-                            else if (id.charAt(0) == 'D') { val = digitalVals[parseInt(id.charAt(1)) - 1]; valid = true; }
+                            if (id.charAt(0) == 'M') { valStr = motorVals[parseInt(id.charAt(1)) - 1].toString(); valid = true; }
+                            else if (id.charAt(0) == 'S') { valStr = servoVals[parseInt(id.charAt(1)) - 1].toString(); valid = true; }
+                            else if (id.charAt(0) == 'A') { valStr = analogVals[parseInt(id.charAt(1)) - 1].toString(); valid = true; }
+                            else if (id.charAt(0) == 'D') { valStr = digitalVals[parseInt(id.charAt(1)) - 1].toString(); valid = true; }
+                            else if (id.charAt(0) == 'T') { valStr = textVals[parseInt(id.charAt(1)) - 1]; valid = true; }
                             
                             if (valid) {
-                                bluetooth.uartWriteString(id + ":" + val + "\n");
+                                bluetooth.uartWriteString(id + ":" + valStr + "\n");
                                 basic.pause(50);
                             }
                         }
@@ -272,11 +278,13 @@ namespace makerlink {
     /**
      * Initialize a Text Data Stream
      */
-    //% block="📝 Init Text Stream $stream | Initial Text $val"
+    //% block="📝 Init Text Stream $stream | Mode $mode | Initial Text $val"
     //% group="Setup (On Start)"
     //% weight=86
-    export function initText(stream: MLTextStream, val: string): void {
-        let cmd = "INIT:" + getTextStr(stream) + ",TEXT," + val;
+    export function initText(stream: MLTextStream, mode: MLPinModeText, val: string): void {
+        textVals[stream] = val;
+        let mStr = (mode == MLPinModeText.IN) ? "IN" : "OUT";
+        let cmd = "INIT:" + getTextStr(stream) + "," + mStr + "," + val;
         saveInitCmd(cmd);
         bluetooth.uartWriteString(cmd + "\n");
     }
@@ -312,7 +320,7 @@ namespace makerlink {
         if (motor == MotorID.M2) mbMotor = MotionBitMotorChannel.M2;
         if (motor == MotorID.M3) mbMotor = MotionBitMotorChannel.M3;
         if (motor == MotorID.M4) mbMotor = MotionBitMotorChannel.M4;
-                                                          
+                                                                    
         if (val > 0) motionbit.runMotor(mbMotor, MotionBitMotorDirection.Forward, val);
         else if (val < 0) motionbit.runMotor(mbMotor, MotionBitMotorDirection.Backward, Math.abs(val));
         else motionbit.runMotor(mbMotor, MotionBitMotorDirection.Forward, 0);
@@ -412,6 +420,15 @@ namespace makerlink {
     //% group="Read (Variables)"
     //% weight=67
     export function getDigitalValue(stream: MLDigitalStream): number { return digitalVals[stream]; }
+
+    /**
+     * Read the latest Text Stream message received from the Web App
+     */
+    //% block="📝 MakerLink Text Stream $stream value"
+    //% group="Read (Variables)"
+    //% weight=66
+    export function getTextValue(stream: MLTextStream): string { return textVals[stream]; }
+
 
     // ==============================================
     // SEND BLOCKS (UPDATE DASHBOARD)
