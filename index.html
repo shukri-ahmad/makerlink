@@ -118,7 +118,6 @@
         const gridEl = document.getElementById('dashboard-grid');
         const sortable = new Sortable(gridEl, { animation: 150, ghostClass: 'sortable-ghost', disabled: true, filter: ".size-btns, input, select, button", preventOnFilter: false, onEnd: function (evt) { saveLayoutOrder(); } });
 
-        // FIX: The SVG generator is officially back in the Host file!
         function getSVGIcon(type) {
             if(type === 'analog') return `<svg class="w-3 h-3 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>`;
             if(type === 'digital') return `<svg class="w-3 h-3 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>`;
@@ -143,56 +142,7 @@
             }
         }
 
-        if (cardVisibility['terminal'] === false) { let tBtn = document.getElementById('vis-btn-terminal'); if(tBtn) { tBtn.innerText = "🙈 HIDDEN"; tBtn.className = "ml-2 text-[10px] border px-2 py-0.5 rounded cursor-pointer hover:bg-slate-700 transition-colors bg-slate-800/50 text-slate-400 border-slate-600/50"; } }
-        
-        function changeCardSize(id, delta) {
-            let card = document.getElementById(`card-${id}`);
-            if (!card) return;
-            let currentSize = parseInt(card.getAttribute('data-size') || '0');
-            currentSize += delta;
-            if (currentSize < 0) currentSize = 0;
-            if (currentSize >= cardSizes.length) currentSize = cardSizes.length - 1;
-            card.setAttribute('data-size', currentSize);
-            card.className = card.className.replace(/\b(md:|lg:|xl:)?col-span-\d\b/g, '').replace(/\s+/g, ' ').trim();
-            let newClasses = cardSizes[currentSize].split(' ');
-            card.classList.add(...newClasses);
-            saveLayoutOrder();
-        }
-
-        function saveLayoutOrder() { 
-            const finalOrder = []; const currentDOMIds = new Set();
-            Array.from(gridEl.children).forEach(c => { 
-                let id = c.id.replace('card-', ''); let size = c.getAttribute('data-size') || '0';
-                currentDOMIds.add(id); finalOrder.push({ id: id, size: size }); 
-            }); 
-            const saved = JSON.parse(localStorage.getItem('makerlink_layout') || '[]'); 
-            saved.forEach(item => { let id = typeof item === 'string' ? item : item.id; if (!currentDOMIds.has(id)) { finalOrder.push({ id: id, size: item.size || '0' }); } });
-            localStorage.setItem('makerlink_layout', JSON.stringify(finalOrder)); 
-            if (isCloudActive && cloudRoomId) { db.ref('rooms/' + cloudRoomId + '/layout').set(finalOrder); } 
-        }
-        
-        function saveCustomLabels() { 
-            let labels = JSON.parse(localStorage.getItem('makerlink_labels') || '{}'); 
-            document.querySelectorAll('.ui-editable, .ui-btn-editable, .ui-editable-num').forEach(el => { if(el.id) labels[el.id] = el.value; }); 
-            localStorage.setItem('makerlink_labels', JSON.stringify(labels)); 
-        }
-
-        function applyCustomLabels() { let labels = JSON.parse(localStorage.getItem('makerlink_labels') || '{}'); for(let id in labels) { let el = document.getElementById(id); if(el) { el.value = labels[id]; if (el.onchange) el.onchange(); } } }
-        
-        function applySavedLayout() { 
-            const saved = JSON.parse(localStorage.getItem('makerlink_layout') || '[]'); 
-            saved.forEach(item => { 
-                let id = typeof item === 'string' ? item : item.id; const card = document.getElementById(`card-${id}`); 
-                if (card) { 
-                    let s = item.size || '0'; card.setAttribute('data-size', s);
-                    card.className = card.className.replace(/\b(md:|lg:|xl:)?col-span-\d\b/g, '').replace(/\s+/g, ' ').trim();
-                    let newClasses = cardSizes[parseInt(s)].split(' '); card.classList.add(...newClasses);
-                    gridEl.appendChild(card); 
-                } 
-            }); 
-        }
-
-        function pingBluetooth() {
+        function pingCloud() {
             const p = document.getElementById('ping-indicator');
             if(!p) return; p.className = "w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)] transition-colors duration-75";
             clearTimeout(p.timer); p.timer = setTimeout(() => { p.className = "w-3 h-3 rounded-full bg-slate-700 transition-colors duration-300"; }, 150);
@@ -201,7 +151,6 @@
         function getAnalogColor(val) { let r = Math.min(1, Math.max(0, val / 1023)); let red = Math.round(100 + r * 149); let green = Math.round(116 - r * 1); let blue = Math.round(139 - r * 117); return `rgb(${red}, ${green}, ${blue})`; }
         function showMsg(msg) { const box = document.getElementById('msg-box'); box.innerText = msg; box.classList.remove('opacity-0', 'pointer-events-none'); box.classList.add('opacity-100'); setTimeout(() => { box.classList.remove('opacity-100'); box.classList.add('opacity-0', 'pointer-events-none'); }, 4000); }
         function escapeHTML(str) { return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag])); }
-        
         function appendTerminal(msg) { 
             const term = document.getElementById('terminal-output'); 
             if (term.innerHTML.includes("Waiting for hardware SYNC...")) term.innerHTML = ''; 
@@ -236,12 +185,12 @@
                 document.body.classList.add('is-editing'); 
                 btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg> Save Layout`; 
                 btn.className = "active:scale-[0.97] transition-all bg-yellow-500/90 hover:bg-yellow-400 text-yellow-950 font-bold py-2.5 px-5 rounded-xl shadow-[0_0_15px_rgba(234,179,8,0.5)] border border-yellow-400 min-w-[140px] flex items-center justify-center gap-2";
-                document.querySelectorAll('.ui-editable, .ui-btn-editable, .ui-editable-num').forEach(el => { if(el.tagName === 'SELECT') { el.disabled = false; } else { el.removeAttribute('readonly'); } if(el.classList.contains('ui-btn-editable') || el.classList.contains('ui-editable-num')) { el.classList.remove('cursor-pointer'); el.classList.add('cursor-text', 'border-yellow-400/80', 'border-dashed', 'bg-yellow-900/20'); } });
+                document.querySelectorAll('select').forEach(el => { el.disabled = false; });
             } else {
                 document.body.classList.remove('is-editing'); 
                 btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg> Edit Layout`; 
                 btn.className = "active:scale-[0.97] transition-all bg-slate-700/90 hover:bg-slate-600 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg border border-slate-600/50 min-w-[140px] flex items-center justify-center gap-2";
-                document.querySelectorAll('.ui-editable, .ui-btn-editable, .ui-editable-num').forEach(el => { if(el.tagName === 'SELECT') { el.disabled = true; } else { el.setAttribute('readonly', true); } if(el.classList.contains('ui-btn-editable') || el.classList.contains('ui-editable-num')) { el.classList.add('cursor-pointer'); el.classList.remove('cursor-text', 'border-yellow-400/80', 'border-dashed', 'bg-yellow-900/20'); } });
+                document.querySelectorAll('select').forEach(el => { el.disabled = true; });
                 saveCustomLabels(); saveLayoutOrder(); 
             }
         }
@@ -277,6 +226,41 @@
         }
 
         function updateVal(id, val) { let valEl = document.getElementById(`val-${id}`); if(valEl) valEl.innerText = val + (id.startsWith('S') ? '°' : ''); advancedData[id] = Number(val) || val; }
+
+        function setServoPos(id, posNum) { 
+            let textEl = document.getElementById(`pos${posNum}-val-display-${id}`);
+            if (!textEl) return;
+            let targetVal = parseInt(textEl.innerText) || 0; 
+            const slider = document.getElementById(`slider-${id}`); 
+            if (slider) slider.value = targetVal; 
+            updateVal(id, targetVal); 
+            sendBluetoothCommand(`${id}:${targetVal}`); 
+        }
+        
+        function setMotor(id, action) { 
+            let val = 0; 
+            if (action === 'ccw') { 
+                let el = document.getElementById(`ccw-spd-${id}`);
+                let spd = el ? (parseInt(el.value) || 0) : 255; 
+                val = -(spd > 255 ? 255 : (spd < 0 ? 0 : spd)); 
+            } 
+            else if (action === 'cw') { 
+                let el = document.getElementById(`cw-spd-${id}`);
+                let spd = el ? (parseInt(el.value) || 0) : 255; 
+                val = (spd > 255 ? 255 : (spd < 0 ? 0 : spd)); 
+            } 
+            if (id === 'M1' || id === 'M2') { val = -val; }
+
+            let displayStr = 'STOP (0)';
+            if (val !== 0) {
+                if (id === 'M1' || id === 'M2') displayStr = val < 0 ? `CW (${Math.abs(val)})` : `CCW (${Math.abs(val)})`;
+                else displayStr = val > 0 ? `CW (${Math.abs(val)})` : `CCW (${Math.abs(val)})`;
+            }
+            let textEl = document.getElementById(`val-${id}`);
+            if (textEl) textEl.innerText = displayStr; 
+            advancedData[id] = val; 
+            sendBluetoothCommand(`${id}:${val}`); 
+        }
 
         function stopRemoteAudio(id) {
             sendBluetoothCommand(`${id}:STOP`);
@@ -339,11 +323,11 @@
                              <canvas id="chart-${id}" class="absolute inset-0 w-full h-full opacity-70"></canvas>
                          </div>
                          <div class="flex gap-3 w-full mt-auto">
-                            <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MIN</label><input type="number" id="ymin-${id}" value="" placeholder="Auto" readonly onchange="updateSensorChartConfig('${id}')" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
-                            <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MAX</label><input type="number" id="ymax-${id}" value="" placeholder="Auto" readonly onchange="updateSensorChartConfig('${id}')" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
+                            <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MIN</label><input type="number" id="ymin-${id}" value="" placeholder="Auto" readonly class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
+                            <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MAX</label><input type="number" id="ymax-${id}" value="" placeholder="Auto" readonly class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
                             <div class="flex-1 flex flex-col">
                                 <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">TIME</label>
-                                <select id="time-${id}" disabled onchange="updateSensorChartConfig('${id}')" class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300 appearance-none">
+                                <select id="time-${id}" disabled class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300 appearance-none">
                                     <option value="0">All</option>
                                     <option value="900000">15m</option>
                                     <option value="3600000">1h</option>
@@ -367,8 +351,8 @@
                              <div id="val-out-${id}" class="w-24 h-24 rounded-2xl transition-all duration-300 border-[3px] shadow-2xl"></div>
                          </div>
                          <div class="flex gap-3 w-full mt-auto">
-                             <input type="text" id="btn-off-${id}" value="OFF" readonly onclick="if(!isEditMode) { sendBluetoothCommand('${id}:0'); updateDigitalUI('${id}', 0); }" class="ui-btn-editable flex-1 py-3 px-2 bg-slate-800/80 hover:bg-slate-700/80 rounded-xl text-slate-400 font-bold tracking-widest text-sm shadow-lg active:scale-[0.97] transition-all border border-slate-700/50 text-center cursor-pointer focus:outline-none truncate">
-                             <input type="text" id="btn-on-${id}" value="ON" readonly onclick="if(!isEditMode) { sendBluetoothCommand('${id}:1'); updateDigitalUI('${id}', 1); }" class="ui-btn-editable flex-1 py-3 px-2 bg-red-600/90 hover:bg-red-500/90 rounded-xl text-white font-bold tracking-widest text-sm shadow-[0_0_15px_rgba(220,38,38,0.4)] active:scale-[0.97] transition-all border border-red-500/50 text-center cursor-pointer focus:outline-none truncate">
+                             <button id="btn-off-${id}" onclick="if(!this.disabled) { sendBluetoothCommand('${id}:0'); updateDigitalUI('${id}', 0); }" class="flex-1 py-3 px-2 bg-slate-800/80 hover:bg-slate-700/80 rounded-xl text-slate-400 font-bold tracking-widest text-sm shadow-lg active:scale-[0.97] transition-all border border-slate-700/50 text-center cursor-pointer focus:outline-none truncate">OFF</button>
+                             <button id="btn-on-${id}" onclick="if(!this.disabled) { sendBluetoothCommand('${id}:1'); updateDigitalUI('${id}', 1); }" class="flex-1 py-3 px-2 bg-red-600/90 hover:bg-red-500/90 rounded-xl text-white font-bold tracking-widest text-sm shadow-[0_0_15px_rgba(220,38,38,0.4)] active:scale-[0.97] transition-all border border-red-500/50 text-center cursor-pointer focus:outline-none truncate">ON</button>
                          </div>`;
             }
             else if (type === 'digital' && mode === 'PUSH') {
@@ -376,13 +360,13 @@
                              <div id="val-out-${id}" class="w-24 h-24 rounded-full transition-all duration-300 border-[3px] shadow-2xl"></div>
                          </div>
                          <div class="flex w-full mt-auto">
-                             <input type="text" id="btn-push-${id}" value="HOLD" readonly 
-                                onmousedown="if(!isEditMode) { sendBluetoothCommand('${id}:1'); updateDigitalUI('${id}', 1); }" 
-                                onmouseup="if(!isEditMode) { sendBluetoothCommand('${id}:0'); updateDigitalUI('${id}', 0); }" 
-                                onmouseleave="if(!isEditMode && advancedData['${id}'] == 1) { sendBluetoothCommand('${id}:0'); updateDigitalUI('${id}', 0); }"
-                                ontouchstart="if(!isEditMode) { sendBluetoothCommand('${id}:1'); updateDigitalUI('${id}', 1); }"
-                                ontouchend="if(!isEditMode) { sendBluetoothCommand('${id}:0'); updateDigitalUI('${id}', 0); }"
-                                class="ui-btn-editable w-full py-4 px-2 bg-purple-600/90 hover:bg-purple-500/90 rounded-xl text-white font-bold tracking-widest text-lg shadow-[0_0_20px_rgba(147,51,234,0.4)] active:scale-[0.97] transition-all border border-purple-500/50 text-center cursor-pointer focus:outline-none truncate select-none">
+                             <button id="btn-push-${id}" 
+                                onmousedown="if(!this.disabled) { sendBluetoothCommand('${id}:1'); updateDigitalUI('${id}', 1); }" 
+                                onmouseup="if(!this.disabled) { sendBluetoothCommand('${id}:0'); updateDigitalUI('${id}', 0); }" 
+                                onmouseleave="if(!this.disabled && advancedData['${id}'] == 1) { sendBluetoothCommand('${id}:0'); updateDigitalUI('${id}', 0); }"
+                                ontouchstart="if(!this.disabled) { sendBluetoothCommand('${id}:1'); updateDigitalUI('${id}', 1); }"
+                                ontouchend="if(!this.disabled) { sendBluetoothCommand('${id}:0'); updateDigitalUI('${id}', 0); }"
+                                class="w-full py-4 px-2 bg-purple-600/90 hover:bg-purple-500/90 rounded-xl text-white font-bold tracking-widest text-lg shadow-[0_0_20px_rgba(147,51,234,0.4)] active:scale-[0.97] transition-all border border-purple-500/50 text-center cursor-pointer focus:outline-none truncate select-none">HOLD</button>
                          </div>`;
             } 
             else if (type === 'text') {
@@ -401,13 +385,13 @@
                 }
 
                 html += `<div id="val-${id}" class="text-2xl font-mono text-orange-400 font-bold mb-4 w-full text-center bg-black/30 py-3 rounded-xl border border-slate-700/50 shadow-inner drop-shadow-md">${mDisplayStr}</div>
-                         <div class="flex gap-3 w-full mb-5"><div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CCW SPEED</label><input type="number" id="ccw-spd-${id}" value="${mCCW}" readonly class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div><div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CW SPEED</label><input type="number" id="cw-spd-${id}" value="${mCW}" readonly class="ui-editable-num w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div></div>
+                         <div class="flex gap-3 w-full mb-5"><div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CCW SPEED</label><input type="number" id="ccw-spd-${id}" value="${mCCW}" readonly class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div><div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CW SPEED</label><input type="number" id="cw-spd-${id}" value="${mCW}" readonly class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div></div>
                          <div class="flex flex-col gap-3 w-full mt-auto">
                              <div class="flex justify-center gap-3 w-full">
-                                 <input type="text" id="btn-ccw-${id}" value="⏪ CCW" readonly onclick="if(!isEditMode) setMotor('${id}', 'ccw')" class="ui-btn-editable flex-1 bg-yellow-600/90 hover:bg-yellow-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-yellow-500/50 cursor-pointer text-center focus:outline-none truncate">
-                                 <input type="text" id="btn-cw-${id}" value="CW ⏩" readonly onclick="if(!isEditMode) setMotor('${id}', 'cw')" class="ui-btn-editable flex-1 bg-green-600/90 hover:bg-green-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-green-500/50 cursor-pointer text-center focus:outline-none truncate">
+                                 <button id="btn-ccw-${id}" onclick="if(!this.disabled) setMotor('${id}', 'ccw')" class="flex-1 bg-yellow-600/90 hover:bg-yellow-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-yellow-500/50 cursor-pointer text-center focus:outline-none truncate">⏪ CCW</button>
+                                 <button id="btn-cw-${id}" onclick="if(!this.disabled) setMotor('${id}', 'cw')" class="flex-1 bg-green-600/90 hover:bg-green-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-green-500/50 cursor-pointer text-center focus:outline-none truncate">CW ⏩</button>
                              </div>
-                             <input type="text" id="btn-stop-${id}" value="⏹️ STOP" readonly onclick="if(!isEditMode) setMotor('${id}', 'stop')" class="ui-btn-editable w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">
+                             <button id="btn-stop-${id}" onclick="if(!this.disabled) setMotor('${id}', 'stop')" class="w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">⏹️ STOP</button>
                          </div>`;
             } 
             else if (type === 'servo') {
@@ -423,12 +407,12 @@
                              <div class="flex-1 flex flex-col gap-1.5">
                                  <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">LIMIT 1</label>
                                  <div class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-blue-400 shadow-inner mb-1" id="pos1-val-display-${id}">${p1}</div>
-                                 <input type="text" id="btn-pos1-${id}" value="POS 1" readonly onclick="if(!isEditMode) setServoPos('${id}', 1)" class="ui-btn-editable w-full bg-blue-600/90 hover:bg-blue-500/90 text-white tracking-wider text-xs font-bold py-2 px-1 rounded-xl shadow-[0_0_12px_rgba(37,99,235,0.4)] active:scale-[0.97] transition-all border border-blue-500/50 cursor-pointer text-center focus:outline-none truncate">
+                                 <button id="btn-pos1-${id}" onclick="if(!this.disabled) setServoPos('${id}', 1)" class="w-full bg-blue-600/90 hover:bg-blue-500/90 text-white tracking-wider text-xs font-bold py-2 px-1 rounded-xl shadow-[0_0_12px_rgba(37,99,235,0.4)] active:scale-[0.97] transition-all border border-blue-500/50 cursor-pointer text-center focus:outline-none truncate">POS 1</button>
                              </div>
                              <div class="flex-1 flex flex-col gap-1.5">
                                  <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">LIMIT 2</label>
                                  <div class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-blue-400 shadow-inner mb-1" id="pos2-val-display-${id}">${p2}</div>
-                                 <input type="text" id="btn-pos2-${id}" value="POS 2" readonly onclick="if(!isEditMode) setServoPos('${id}', 2)" class="ui-btn-editable w-full bg-blue-600/90 hover:bg-blue-500/90 text-white tracking-wider text-xs font-bold py-2 px-1 rounded-xl shadow-[0_0_12px_rgba(37,99,235,0.4)] active:scale-[0.97] transition-all border border-blue-500/50 cursor-pointer text-center focus:outline-none truncate">
+                                 <button id="btn-pos2-${id}" onclick="if(!this.disabled) setServoPos('${id}', 2)" class="w-full bg-blue-600/90 hover:bg-blue-500/90 text-white tracking-wider text-xs font-bold py-2 px-1 rounded-xl shadow-[0_0_12px_rgba(37,99,235,0.4)] active:scale-[0.97] transition-all border border-blue-500/50 cursor-pointer text-center focus:outline-none truncate">POS 2</button>
                              </div>
                          </div>`;
             }
@@ -444,14 +428,14 @@
                              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
                              <input type="range" id="vol-${id}" min="0" max="1" step="0.1" value="0.5" oninput="updateVolume('${id}', this.value)" class="flex-1">
                          </div>
-                         <input type="text" id="btn-stop-${id}" value="⏹️ STOP ALARM" readonly onclick="if(!isEditMode) stopRemoteAudio('${id}')" class="ui-btn-editable w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">`;
+                         <button id="btn-stop-${id}" onclick="if(!this.disabled) stopRemoteAudio('${id}')" class="w-full bg-red-600/90 hover:bg-red-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)] active:scale-[0.97] transition-all border border-red-500/50 cursor-pointer text-center focus:outline-none truncate">⏹️ STOP ALARM</button>`;
             }
 
             html += `</div><div class="p-3 bg-black/20 border-t ${borderTheme} rounded-b-2xl flex justify-center"><input type="text" id="title-${id}" value="Custom Label" readonly class="ui-editable font-bold text-xs tracking-widest text-slate-400 uppercase bg-transparent border-none outline-none focus:ring-1 focus:ring-slate-500 rounded-md w-full text-center placeholder-slate-600 cursor-pointer truncate" placeholder="NAME THIS CARD..."></div>`;
 
             card.innerHTML = html; gridEl.appendChild(card);
             
-            if (type === 'analog' && mode === 'IN') { initSensorChart(id); if(startVals) document.getElementById(`val-${id}`).style.color = getAnalogColor(Number(startVals[0])); }
+            if (type === 'analog' && mode === 'IN') { initChart(id); if(startVals) document.getElementById(`val-${id}`).style.color = getAnalogColor(Number(startVals[0])); }
             if (type === 'analog' && mode === 'OUT') updateAnalogOutUI(id, startVals ? startVals[0] : 0);
             if (type === 'digital') updateDigitalUI(id, startVals ? startVals[0] : 0);
 
@@ -549,7 +533,7 @@
             else {
                 let valNum = Number(valStr); if(isNaN(valNum)) valNum = 0;
                 
-                if (cardData.type === 'analog' && cardData.mode === 'IN') { let el = document.getElementById(`val-${id}`); if(el) { el.innerText = valNum; el.style.color = getAnalogColor(valNum); pushSensorData(id, valNum); } } 
+                if (cardData.type === 'analog' && cardData.mode === 'IN') { let el = document.getElementById(`val-${id}`); if(el) { el.innerText = valNum; el.style.color = getAnalogColor(valNum); pushChartData(id, valNum); } } 
                 else if (cardData.type === 'analog' && cardData.mode === 'OUT') { updateAnalogOutUI(id, valNum); }
                 else if (cardData.type === 'digital') { updateDigitalUI(id, valNum); }
                 else if (cardData.type === 'motor') { 
@@ -621,19 +605,19 @@
                     if (isOut) { cardData.publicControl = cardPermissions[id] !== false; }
 
                     if (info.type === 'analog' && info.mode === 'IN') {
-                        cardData.ymin = document.getElementById(`ymin-${id}`)?.value || ""; cardData.ymax = document.getElementById(`ymax-${id}`)?.value || ""; cardData.time = document.getElementById(`time-${id}`)?.value || "0";
-                    } else if (info.type === 'digital' && info.mode === 'OUT') {
-                        cardData.btnOff = document.getElementById(`btn-off-${id}`)?.value || "OFF"; cardData.btnOn = document.getElementById(`btn-on-${id}`)?.value || "ON";
-                    } else if (info.type === 'digital' && info.mode === 'PUSH') {
-                        cardData.btnPush = document.getElementById(`btn-push-${id}`)?.value || "HOLD";
+                        // Safely grab chart time values
+                        let timeEl = document.getElementById(`time-${id}`);
+                        cardData.time = timeEl ? timeEl.value : "0";
                     } else if (info.type === 'servo') {
-                        cardData.pos1Val = Number(document.getElementById(`pos1-val-display-${id}`).innerText) || 0; 
-                        cardData.pos2Val = Number(document.getElementById(`pos2-val-display-${id}`).innerText) || 180;
-                        cardData.btnPos1 = document.getElementById(`btn-pos1-${id}`)?.value || "POS 1"; 
-                        cardData.btnPos2 = document.getElementById(`btn-pos2-${id}`)?.value || "POS 2";
+                        let d1 = document.getElementById(`pos1-val-display-${id}`);
+                        let d2 = document.getElementById(`pos2-val-display-${id}`);
+                        cardData.pos1Val = d1 ? (Number(d1.innerText) || 0) : 0; 
+                        cardData.pos2Val = d2 ? (Number(d2.innerText) || 180) : 180;
                     } else if (info.type === 'motor') {
-                        cardData.btnCcw = document.getElementById(`btn-ccw-${id}`)?.value || "⏪ CCW"; cardData.btnStop = document.getElementById(`btn-stop-${id}`)?.value || "⏹️ STOP"; cardData.btnCw = document.getElementById(`btn-cw-${id}`)?.value || "CW ⏩";
-                        cardData.cwSpd = Number(document.getElementById(`cw-spd-${id}`)?.value) || 255; cardData.ccwSpd = Number(document.getElementById(`ccw-spd-${id}`)?.value) || 255;
+                        let cwSpd = document.getElementById(`cw-spd-${id}`);
+                        let ccwSpd = document.getElementById(`ccw-spd-${id}`);
+                        cardData.cwSpd = cwSpd ? (Number(cwSpd.value) || 255) : 255; 
+                        cardData.ccwSpd = ccwSpd ? (Number(ccwSpd.value) || 255) : 255;
                     }
                     payload.push(cardData);
                 }
@@ -641,6 +625,40 @@
             
             if (payload.length === 0) { db.ref('rooms/' + cloudRoomId + '/state').set({ empty: true }).catch(console.error); } 
             else { db.ref('rooms/' + cloudRoomId + '/state').set(payload).catch(console.error); }
+        }
+        
+        function initChart(id) { 
+            const ctx = document.getElementById(`chart-${id}`).getContext('2d'); 
+            sensorCharts[id] = new Chart(ctx, { 
+                type: 'line', 
+                data: { labels: [], datasets: [{ data: [], borderColor: '#c084fc', tension: 0.3, pointRadius: 0, borderWidth: 2, fill: true, backgroundColor: 'rgba(192, 132, 252, 0.1)' }] }, 
+                options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } } 
+            }); 
+        }
+        
+        function pushChartData(id, val) { 
+            if(!sensorCharts[id]) return; 
+            const chart = sensorCharts[id]; 
+            const timeEl = document.getElementById(`time-${id}`); 
+            const windowMs = (timeEl && timeEl.value !== "") ? parseInt(timeEl.value) : 0; 
+            
+            let now = Date.now(); 
+            chart.data.labels.push(now); 
+            chart.data.datasets[0].data.push(val); 
+            
+            if(windowMs > 0) { 
+                let cutoff = now - windowMs; 
+                while(chart.data.labels.length > 0 && chart.data.labels[0] < cutoff) { 
+                    chart.data.labels.shift(); 
+                    chart.data.datasets[0].data.shift(); 
+                } 
+            } else {
+                if (chart.data.labels.length > 200) { 
+                    chart.data.labels.shift(); 
+                    chart.data.datasets[0].data.shift(); 
+                }
+            }
+            chart.update('none'); 
         }
     </script>
 </body>
