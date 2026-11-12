@@ -329,7 +329,7 @@
                     let oldVal = advancedData[card.id]; advancedData[card.id] = card.val; 
                     
                     let cardEl = document.getElementById(`public-card-${card.id}`);
-                    let isOutput = (card.type === 'analog' && card.mode === 'OUT') || (card.type === 'digital' && (card.mode === 'OUT' || card.mode === 'PUSH')) || card.type === 'motor' || card.type === 'servo' || card.type === 'audio';
+                    let isOutput = (card.type === 'analog' && card.mode === 'OUT') || (card.type === 'digital' && (card.mode === 'OUT' || card.mode === 'PUSH')) || (card.type === 'text' && card.mode === 'OUT') || card.type === 'motor' || card.type === 'servo' || card.type === 'audio';
                     
                     if (!cardEl) {
                         cardEl = document.createElement('div'); 
@@ -390,6 +390,12 @@
                                      <div class="flex w-full mt-auto">
                                          <button id="btn-push-${card.id}" onmousedown="if(!this.disabled) { sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1); }" onmouseup="if(!this.disabled) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }" onmouseleave="if(!this.disabled && advancedData['${card.id}'] == 1) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }" ontouchstart="if(!this.disabled) { sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1); }" ontouchend="if(!this.disabled) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }" class="w-full py-4 px-2 bg-purple-600/90 hover:bg-purple-500/90 rounded-xl text-white font-bold tracking-widest text-lg shadow-[0_0_20px_rgba(147,51,234,0.4)] active:scale-[0.97] transition-all border border-purple-500/50 text-center cursor-pointer focus:outline-none truncate select-none">${card.btnPush || "HOLD"}</button>
                                      </div>`;
+                        } else if (card.type === 'text' && card.mode === 'OUT') {
+                            let displayTxt = card.val !== undefined ? card.val : "";
+                            html += `<div class="flex-1 flex flex-col justify-center w-full gap-4 mt-auto">
+                                         <input type="text" id="text-input-${card.id}" value="${displayTxt}" oninput="advancedData['${card.id}'] = this.value;" class="w-full bg-black/40 border border-slate-700/50 rounded-xl px-4 py-4 text-center text-lg font-mono text-pink-400 shadow-inner focus:outline-none focus:border-pink-500 placeholder-slate-600 transition-colors" placeholder="TYPE MESSAGE...">
+                                         <button id="btn-send-${card.id}" onclick="if(!this.disabled) { sendRemoteCommand('${card.id}:' + document.getElementById('text-input-${card.id}').value); }" class="w-full bg-pink-600/90 hover:bg-pink-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(244,114,182,0.3)] active:scale-[0.97] transition-all border border-pink-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnSend || "SEND"}</button>
+                                     </div>`;
                         } else if (card.type === 'text') {
                             let displayTxt = card.val !== undefined ? card.val : "";
                             html += `<div class="w-full h-full overflow-y-auto custom-scrollbar flex p-4 bg-black/20 rounded-xl border border-slate-700/50"><div id="val-${card.id}" class="m-auto w-full text-center text-3xl font-bold tracking-tight text-pink-400 break-words whitespace-pre-wrap drop-shadow-md">${displayTxt}</div></div>`;
@@ -400,7 +406,10 @@
                                 else mDisplayStr = mStart > 0 ? `CW (${Math.abs(mStart)})` : `CCW (${Math.abs(mStart)})`;
                             }
                             html += `<div id="val-${card.id}" class="text-2xl font-mono text-orange-400 font-bold mb-4 w-full text-center bg-black/30 py-3 rounded-xl border border-slate-700/50 shadow-inner drop-shadow-md">${mDisplayStr}</div>
-                                     <div class="flex gap-3 w-full mb-5"><div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CCW SPEED</label><input type="number" id="ccw-spd-${card.id}" value="${card.ccwSpd || 255}" readonly class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div><div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CW SPEED</label><input type="number" id="cw-spd-${card.id}" value="${card.cwSpd || 255}" readonly class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div></div>
+                                     <div class="flex gap-3 w-full mb-5">
+                                         <div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CCW SPEED (MAX ${card.ccwLimit || 255})</label><input type="number" id="ccw-spd-${card.id}" value="${card.ccwSpd || 255}" max="${card.ccwLimit || 255}" min="0" readonly oninput="if(parseInt(this.value) > parseInt(this.max)) this.value = this.max; if(parseInt(this.value) < 0) this.value = 0;" class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div>
+                                         <div class="flex-1 flex flex-col"><label class="text-[9px] tracking-wider text-slate-500 mb-1.5 text-center font-bold">CW SPEED (MAX ${card.cwLimit || 255})</label><input type="number" id="cw-spd-${card.id}" value="${card.cwSpd || 255}" max="${card.cwLimit || 255}" min="0" readonly oninput="if(parseInt(this.value) > parseInt(this.max)) this.value = this.max; if(parseInt(this.value) < 0) this.value = 0;" class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-2 text-center text-sm font-mono text-orange-400 shadow-inner"></div>
+                                     </div>
                                      <div class="flex flex-col gap-3 w-full mt-auto">
                                          <div class="flex justify-center gap-3 w-full">
                                              <button id="btn-ccw-${card.id}" onclick="if(!this.disabled) { setMotor('${card.id}', 'ccw'); }" class="flex-1 bg-yellow-600/90 hover:bg-yellow-500/90 text-white tracking-wider text-sm font-bold py-2.5 px-2 rounded-xl shadow-lg active:scale-[0.97] transition-all border border-yellow-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnCcw || "⏪ CCW"}</button>
@@ -454,7 +463,11 @@
                     let titleEl = document.getElementById(`title-${card.id}`); if(titleEl) titleEl.value = card.title || "Label";
                     
                     if (card.type === 'text') { 
-                        let el = document.getElementById(`val-${card.id}`); if(el) el.innerText = card.val; 
+                        if (card.mode === 'OUT') {
+                            let el = document.getElementById(`text-input-${card.id}`); if(el) el.value = card.val;
+                        } else {
+                            let el = document.getElementById(`val-${card.id}`); if(el) el.innerText = card.val; 
+                        }
                     }
                     else if (card.type === 'audio' && card.val !== oldVal) {
                         if (String(card.val).startsWith('PLAY')) {
@@ -528,6 +541,7 @@
                         else if (card.type === 'digital' && card.mode === 'PUSH') elsToToggle = [`btn-push-${card.id}`];
                         else if (card.type === 'motor') elsToToggle = [`btn-ccw-${card.id}`, `btn-cw-${card.id}`, `btn-stop-${card.id}`];
                         else if (card.type === 'servo') elsToToggle = [`btn-pos1-${card.id}`, `btn-pos2-${card.id}`];
+                        else if (card.type === 'text' && card.mode === 'OUT') elsToToggle = [`text-input-${card.id}`, `btn-send-${card.id}`];
                         
                         elsToToggle.forEach(eid => {
                             let el = document.getElementById(eid);
