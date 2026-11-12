@@ -143,92 +143,32 @@
             }
         }
 
-        function changeCardSize(id, delta) {
-            let card = document.getElementById(`public-card-${id}`);
-            if (!card) return;
-            let currentSize = parseInt(card.getAttribute('data-size') || '0');
-            currentSize += delta;
-            if (currentSize < 0) currentSize = 0;
-            if (currentSize >= cardSizes.length) currentSize = cardSizes.length - 1;
-            card.setAttribute('data-size', currentSize);
-            card.className = card.className.replace(/\b(md:|lg:|xl:)?col-span-\d\b/g, '').replace(/\s+/g, ' ').trim();
-            let newClasses = cardSizes[currentSize].split(' ');
-            card.classList.add(...newClasses);
-            saveLayoutOrder();
-        }
-
-        function saveLayoutOrder() { 
-            const finalOrder = []; const currentDOMIds = new Set();
-            const gridEl = document.getElementById('dashboard-grid');
-            Array.from(gridEl.children).forEach(c => { 
-                let id = c.id.replace('public-card-', ''); let size = c.getAttribute('data-size') || '0';
-                currentDOMIds.add(id); finalOrder.push({ id: id, size: size }); 
-            }); 
-            const saved = JSON.parse(localStorage.getItem('makerlink_public_layout') || '[]'); 
-            saved.forEach(item => { let id = typeof item === 'string' ? item : item.id; if (!currentDOMIds.has(id)) { finalOrder.push({ id: id, size: item.size || '0' }); } });
-            localStorage.setItem('makerlink_public_layout', JSON.stringify(finalOrder)); 
-        }
-
         function applyPublicLayout() {
-            let localSaved = JSON.parse(localStorage.getItem('makerlink_public_layout') || '[]');
-            let orderToApply = localSaved.length > 0 ? localSaved : currentLayoutOrder;
-            
-            if (!orderToApply || orderToApply.length === 0) return;
-            
+            if (!currentLayoutOrder || currentLayoutOrder.length === 0) return;
             const grid = document.getElementById('dashboard-grid'); 
-            orderToApply.forEach(item => { 
+            
+            let needsReorder = false;
+            let currentNodes = Array.from(grid.children);
+            
+            for (let i = 0; i < currentLayoutOrder.length; i++) {
+                let id = typeof currentLayoutOrder[i] === 'string' ? currentLayoutOrder[i] : currentLayoutOrder[i].id;
+                if (currentNodes[i] && currentNodes[i].id !== `public-card-${id}`) { needsReorder = true; break; }
+            }
+
+            currentLayoutOrder.forEach(item => { 
                 let id = typeof item === 'string' ? item : item.id; 
                 const card = document.getElementById(`public-card-${id}`); 
                 if(card) {
-                    let s = item.size || '0'; 
-                    card.setAttribute('data-size', s);
-                    card.className = card.className.replace(/\b(md:|lg:|xl:)?col-span-\d\b/g, '').replace(/\s+/g, ' ').trim();
-                    let newClasses = cardSizes[parseInt(s)].split(' '); 
-                    card.classList.add(...newClasses);
-                    grid.appendChild(card); 
+                    let s = String(item.size || '0'); 
+                    if (card.getAttribute('data-size') !== s) {
+                        card.setAttribute('data-size', s);
+                        card.className = card.className.replace(/\b(md:|lg:|xl:)?col-span-\d\b/g, '').replace(/\s+/g, ' ').trim();
+                        let newClasses = cardSizes[parseInt(s)].split(' '); 
+                        card.classList.add(...newClasses);
+                    }
+                    if (needsReorder) grid.appendChild(card); 
                 }
             });
-        }
-        
-        function toggleEditMode() {
-            isEditMode = !isEditMode; 
-            if(sortable) sortable.option("disabled", !isEditMode); 
-            const btn = document.getElementById('btn-edit');
-            
-            if (isEditMode) {
-                document.body.classList.add('is-editing'); 
-                btn.innerHTML = `Save Layout`; 
-                btn.className = "active:scale-[0.97] transition-all bg-yellow-500/90 hover:bg-yellow-400 text-yellow-950 font-bold py-2.5 px-4 rounded-xl shadow-[0_0_15px_rgba(234,179,8,0.5)] border border-yellow-400 flex items-center justify-center gap-2";
-                
-                document.querySelectorAll('.ui-editable, .ui-btn-editable, .ui-editable-num').forEach(el => { 
-                    if (el.tagName === 'BUTTON') {
-                        el.contentEditable = "true";
-                    } else if (el.tagName !== 'SELECT') { 
-                        el.removeAttribute('readonly'); 
-                    } 
-                    if(el.classList.contains('ui-btn-editable') || el.classList.contains('ui-editable-num') || el.tagName === 'BUTTON') { 
-                        el.classList.remove('cursor-pointer'); 
-                        el.classList.add('cursor-text', 'border-yellow-400/80', 'border-dashed', 'bg-yellow-900/40'); 
-                    } 
-                });
-            } else {
-                document.body.classList.remove('is-editing'); 
-                btn.innerHTML = `Edit Layout`; 
-                btn.className = "active:scale-[0.97] transition-all bg-slate-700/90 hover:bg-slate-600 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg border border-slate-600/50 flex items-center justify-center gap-2";
-                
-                document.querySelectorAll('.ui-editable, .ui-btn-editable, .ui-editable-num').forEach(el => { 
-                    if (el.tagName === 'BUTTON') {
-                        el.contentEditable = "false";
-                    } else if (el.tagName !== 'SELECT') { 
-                        el.setAttribute('readonly', true); 
-                    } 
-                    if(el.classList.contains('ui-btn-editable') || el.classList.contains('ui-editable-num') || el.tagName === 'BUTTON') { 
-                        el.classList.add('cursor-pointer'); 
-                        el.classList.remove('cursor-text', 'border-yellow-400/80', 'border-dashed', 'bg-yellow-900/40'); 
-                    } 
-                });
-                saveLayoutOrder(); 
-            }
         }
 
         function pingCloud() {
@@ -315,6 +255,14 @@
             db.ref('rooms/' + currentRoom + '/command').push({ cmd: cmd, ts: Date.now() }); 
         }
 
+        function sendTextMessage(id) {
+            let el = document.getElementById(`text-input-${id}`);
+            if(el && el.value.trim() !== '') {
+                sendRemoteCommand(`${id}:${el.value}`);
+                el.value = ''; 
+            }
+        }
+
         function stopRemoteAudio(id) { sendRemoteCommand(`${id}:STOP`); }
         function updateVolume(id, val) { audioVolumes[id] = val; if(audioPlayers[id]) audioPlayers[id].volume = val; }
 
@@ -385,25 +333,6 @@
 
         function updateVal(id, val) { let valEl = document.getElementById(`val-${id}`); if(valEl) valEl.innerText = val + (id.startsWith('S') ? '°' : ''); advancedData[id] = Number(val) || val; }
 
-        function updateTextUI(id, val) {
-            let container = document.getElementById(`text-container-${id}`);
-            if(!container) return;
-            
-            let span = document.createElement('span');
-            span.className = "text-3xl font-bold tracking-tight whitespace-nowrap invisible absolute";
-            span.innerText = val;
-            document.body.appendChild(span);
-            let isLong = span.offsetWidth > (container.clientWidth - 32); 
-            document.body.removeChild(span);
-
-            if (isLong) {
-                // FIXED: Explicit style tag to force 100% width on marquee elements in flex containers
-                container.innerHTML = `<marquee id="val-${id}" scrollamount="6" style="width: 100%; display: block;" class="text-3xl font-bold tracking-tight text-pink-400 drop-shadow-md leading-tight pt-1">${escapeHTML(val)}</marquee>`;
-            } else {
-                container.innerHTML = `<div id="val-${id}" class="w-full text-center text-3xl font-bold tracking-tight text-pink-400 drop-shadow-md truncate leading-tight pt-1">${escapeHTML(val)}</div>`;
-            }
-        }
-
         function renderSharedCards(sharedCards) {
             const gridEl = document.getElementById('dashboard-grid');
             document.getElementById('empty-state').classList.add('hidden'); document.getElementById('section-terminal').classList.remove('hidden'); 
@@ -432,7 +361,7 @@
 
                         let permBtnHTML = isOutput ? `<span id="public-perm-${card.id}" class="ml-2 text-[9px] font-bold tracking-wider border px-2 py-0.5 rounded transition-colors bg-green-900/40 text-green-400 border-green-700/50 shadow-[0_0_8px_rgba(74,222,128,0.2)]">🎮 PUBLIC</span>` : '';
                         
-                        let html = `<div class="p-3 border-b ${borderTheme} flex justify-between items-center bg-black/20 rounded-t-2xl"><div class="flex items-center gap-2"><span class="font-bold text-sm tracking-wide ${colorClass}">${card.id}</span><span class="text-[10px] font-bold tracking-wider bg-black/40 px-2 py-0.5 rounded text-slate-400 border border-slate-700/50 flex items-center gap-1">${iconStr} ${card.mode || card.type.toUpperCase()}</span></div><div class="flex items-center">${permBtnHTML}</div></div><div class="p-5 flex-1 min-h-0 flex flex-col bg-transparent overflow-hidden w-full">`;
+                        let html = `<div class="p-3 border-b ${borderTheme} flex justify-between items-center bg-black/20 rounded-t-2xl"><div class="flex items-center gap-2"><span class="font-bold text-sm tracking-wide ${colorClass}">${card.id}</span><span class="text-[10px] font-bold tracking-wider bg-black/40 px-2 py-0.5 rounded text-slate-400 border border-slate-700/50 flex items-center gap-1">${iconStr} ${card.mode || card.type.toUpperCase()}</span></div><div class="flex items-center">${permBtnHTML}</div></div><div class="p-5 flex-1 min-h-0 flex flex-col justify-center items-center bg-transparent overflow-hidden">`;
 
                         if (card.type === 'analog' && card.mode === 'IN') {
                             html += `<div class="w-full flex-1 relative min-h-[120px] bg-black/20 rounded-xl border border-slate-700/50 mb-4 flex items-center justify-center overflow-hidden">
@@ -440,11 +369,11 @@
                                          <canvas id="chart-${card.id}" class="absolute inset-0 w-full h-full opacity-70"></canvas>
                                      </div>
                                      <div class="flex gap-3 w-full mt-auto">
-                                        <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MIN</label><input type="number" id="ymin-${card.id}" value="${card.ymin || ''}" placeholder="Auto" readonly onchange="updateChartConfig('${card.id}')" class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
-                                        <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MAX</label><input type="number" id="ymax-${card.id}" value="${card.ymax || ''}" placeholder="Auto" readonly onchange="updateChartConfig('${card.id}')" class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
+                                        <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MIN</label><input type="number" id="ymin-${card.id}" value="${card.ymin || ''}" placeholder="Auto" readonly class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
+                                        <div class="flex-1 flex flex-col"><label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">MAX</label><input type="number" id="ymax-${card.id}" value="${card.ymax || ''}" placeholder="Auto" readonly class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300"></div>
                                         <div class="flex-1 flex flex-col">
                                             <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">TIME</label>
-                                            <select id="time-${card.id}" disabled onchange="updateChartConfig('${card.id}')" class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300 appearance-none">
+                                            <select id="time-${card.id}" disabled class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-slate-300 appearance-none">
                                                 <option value="0">All</option><option value="900000">15m</option><option value="3600000">1h</option><option value="14400000">4h</option>
                                             </select>
                                         </div>
@@ -461,18 +390,18 @@
                                      <div class="edit-only-flex gap-4 w-full mt-auto pt-4">
                                          <div class="flex-1 flex flex-col gap-1.5">
                                              <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">LOW TEXT</label>
-                                             <input type="text" id="label-low-${card.id}" value="${card.labelLow || 'LOW'}" readonly oninput="updateDigitalUI('${card.id}', advancedData['${card.id}'])" class="ui-editable w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-emerald-400 shadow-inner">
+                                             <input type="text" id="label-low-${card.id}" value="${card.labelLow || 'LOW'}" readonly class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-emerald-400 shadow-inner">
                                          </div>
                                          <div class="flex-1 flex flex-col gap-1.5">
                                              <label class="text-[9px] text-slate-500 tracking-wider text-center font-bold">HIGH TEXT</label>
-                                             <input type="text" id="label-high-${card.id}" value="${card.labelHigh || 'HIGH'}" readonly oninput="updateDigitalUI('${card.id}', advancedData['${card.id}'])" class="ui-editable w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-emerald-400 shadow-inner">
+                                             <input type="text" id="label-high-${card.id}" value="${card.labelHigh || 'HIGH'}" readonly class="w-full bg-black/30 border border-slate-700/50 rounded-lg px-2 py-1.5 text-center text-xs font-mono text-emerald-400 shadow-inner">
                                          </div>
                                      </div>`;
                         } else if (card.type === 'digital' && card.mode === 'OUT') {
                             html += `<div class="flex-1 flex items-center justify-center w-full"><div id="val-out-${card.id}" class="w-24 h-24 rounded-2xl transition-all duration-300 border-[3px] shadow-2xl"></div></div>
                                      <div class="flex gap-3 w-full mt-auto">
-                                         <button id="btn-off-${card.id}" onclick="if(!this.disabled) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }" class="ui-btn-editable flex-1 py-3 px-2 bg-slate-800/80 hover:bg-slate-700/80 rounded-xl text-slate-400 font-bold tracking-widest text-sm shadow-lg active:scale-[0.97] transition-all border border-slate-700/50 text-center cursor-pointer focus:outline-none truncate">${card.btnOff || "OFF"}</button>
-                                         <button id="btn-on-${card.id}" onclick="if(!this.disabled) { sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1); }" class="ui-btn-editable flex-1 py-3 px-2 bg-red-600/90 hover:bg-red-500/90 rounded-xl text-white font-bold tracking-widest text-sm shadow-[0_0_15px_rgba(220,38,38,0.4)] active:scale-[0.97] transition-all border border-red-500/50 text-center cursor-pointer focus:outline-none truncate">${card.btnOn || "ON"}</button>
+                                         <button id="btn-off-${card.id}" onclick="if(!this.disabled) { sendRemoteCommand('${card.id}:0'); updateDigitalUI('${card.id}', 0); }" class="flex-1 py-3 px-2 bg-slate-800/80 hover:bg-slate-700/80 rounded-xl text-slate-400 font-bold tracking-widest text-sm shadow-lg active:scale-[0.97] transition-all border border-slate-700/50 text-center cursor-pointer focus:outline-none truncate">${card.btnOff || "OFF"}</button>
+                                         <button id="btn-on-${card.id}" onclick="if(!this.disabled) { sendRemoteCommand('${card.id}:1'); updateDigitalUI('${card.id}', 1); }" class="flex-1 py-3 px-2 bg-red-600/90 hover:bg-red-500/90 rounded-xl text-white font-bold tracking-widest text-sm shadow-[0_0_15px_rgba(220,38,38,0.4)] active:scale-[0.97] transition-all border border-red-500/50 text-center cursor-pointer focus:outline-none truncate">${card.btnOn || "ON"}</button>
                                      </div>`;
                         } else if (card.type === 'digital' && card.mode === 'PUSH') {
                             html += `<div class="flex-1 flex items-center justify-center w-full"><div id="val-out-${card.id}" class="w-24 h-24 rounded-full transition-all duration-300 border-[3px] shadow-2xl"></div></div>
@@ -482,13 +411,13 @@
                         } else if (card.type === 'text' && card.mode === 'OUT') {
                             let displayTxt = card.val !== undefined ? card.val : "";
                             html += `<div class="flex-1 flex flex-col justify-center w-full gap-4 mt-auto">
-                                         <input type="text" id="text-input-${card.id}" value="${displayTxt}" oninput="advancedData['${card.id}'] = this.value;" class="w-full bg-black/40 border border-slate-700/50 rounded-xl px-4 py-4 text-center text-lg font-mono text-pink-400 shadow-inner focus:outline-none focus:border-pink-500 placeholder-slate-600 transition-colors" placeholder="TYPE MESSAGE...">
-                                         <button id="btn-send-${card.id}" onclick="if(!this.disabled) { sendTextMessage('${card.id}'); }" class="ui-btn-editable w-full bg-pink-600/90 hover:bg-pink-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(244,114,182,0.3)] active:scale-[0.97] transition-all border border-pink-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnSend || "SEND"}</button>
+                                         <input type="text" id="text-input-${card.id}" value="${displayTxt}" class="w-full bg-black/40 border border-slate-700/50 rounded-xl px-4 py-4 text-center text-lg font-mono text-pink-400 shadow-inner focus:outline-none focus:border-pink-500 placeholder-slate-600 transition-colors" placeholder="TYPE MESSAGE...">
+                                         <button id="btn-send-${card.id}" onclick="if(!this.disabled) { sendTextMessage('${card.id}'); }" class="w-full bg-pink-600/90 hover:bg-pink-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(244,114,182,0.3)] active:scale-[0.97] transition-all border border-pink-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnSend || "SEND"}</button>
                                      </div>`;
                         } else if (card.type === 'text') {
                             let displayTxt = card.val !== undefined ? card.val : "";
-                            html += `<div class="w-full flex-1 flex flex-col justify-center p-4 bg-black/20 rounded-xl border border-slate-700/50 overflow-hidden min-h-[120px]" id="text-container-${card.id}">
-                                         <div id="val-${card.id}" class="w-full text-center whitespace-nowrap text-3xl font-bold tracking-tight text-pink-400 drop-shadow-md truncate leading-tight">${displayTxt}</div>
+                            html += `<div class="w-full flex-1 flex p-4 bg-black/20 rounded-xl border border-slate-700/50 overflow-y-auto custom-scrollbar min-h-[120px]">
+                                         <div id="val-${card.id}" class="m-auto w-full text-center text-3xl font-bold tracking-tight text-pink-400 drop-shadow-md break-words whitespace-pre-wrap leading-tight">${displayTxt}</div>
                                      </div>`;
                         } else if (card.type === 'motor') {
                             let mStart = card.val !== undefined ? Number(card.val) : 0; let mDisplayStr = 'STOP (0)';
@@ -561,7 +490,7 @@
                         if (card.mode === 'OUT') {
                             let el = document.getElementById(`text-input-${card.id}`); if(el) el.value = card.val;
                         } else {
-                            updateTextUI(card.id, card.val); 
+                            let el = document.getElementById(`val-${card.id}`); if(el) el.innerText = card.val; 
                         }
                     }
                     else if (card.type === 'audio' && card.val !== oldVal) {
