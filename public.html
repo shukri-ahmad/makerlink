@@ -204,7 +204,7 @@
             if (!roomId) { showMsg("Please enter a valid Room ID."); return; }
             if(currentRoom) { db.ref('rooms/' + currentRoom + '/state').off(); db.ref('rooms/' + currentRoom + '/logs').off(); db.ref('rooms/' + currentRoom + '/layout').off(); db.ref('rooms/' + currentRoom + '/config').off(); db.ref('rooms/' + currentRoom + '/heartbeat').off(); }
             currentRoom = roomId; const btn = document.getElementById('btn-join'); 
-            btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Connected`; 
+            btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> Connected`; 
             btn.className = "active:scale-[0.97] transition-all bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold py-2.5 px-6 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.5)] border border-emerald-500/50 whitespace-nowrap flex items-center gap-2";
             showMsg(`Joined Room ${roomId}`);
             document.getElementById('empty-state').innerHTML = `<svg class="w-16 h-16 text-purple-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><p class="tracking-widest uppercase text-sm">Waiting for Host data...</p>`;
@@ -259,6 +259,7 @@
             let el = document.getElementById(`text-input-${id}`);
             if(el && el.value.trim() !== '') {
                 sendRemoteCommand(`${id}:${el.value}`);
+                advancedData[id] = el.value; 
                 el.value = ''; 
             }
         }
@@ -332,6 +333,13 @@
         }
 
         function updateVal(id, val) { let valEl = document.getElementById(`val-${id}`); if(valEl) valEl.innerText = val + (id.startsWith('S') ? '°' : ''); advancedData[id] = Number(val) || val; }
+
+        function updateTextUI(id, val) {
+            let el = document.getElementById(`val-${id}`);
+            if(el) {
+                el.innerText = val;
+            }
+        }
 
         function renderSharedCards(sharedCards) {
             const gridEl = document.getElementById('dashboard-grid');
@@ -411,13 +419,13 @@
                         } else if (card.type === 'text' && card.mode === 'OUT') {
                             let displayTxt = card.val !== undefined ? card.val : "";
                             html += `<div class="flex-1 flex flex-col justify-center w-full gap-4 mt-auto">
-                                         <input type="text" id="text-input-${card.id}" value="${displayTxt}" class="w-full bg-black/40 border border-slate-700/50 rounded-xl px-4 py-4 text-center text-lg font-mono text-pink-400 shadow-inner focus:outline-none focus:border-pink-500 placeholder-slate-600 transition-colors" placeholder="TYPE MESSAGE...">
+                                         <input type="text" id="text-input-${card.id}" value="${displayTxt}" oninput="advancedData['${card.id}'] = this.value;" class="w-full bg-black/40 border border-slate-700/50 rounded-xl px-4 py-4 text-center text-lg font-mono text-pink-400 shadow-inner focus:outline-none focus:border-pink-500 placeholder-slate-600 transition-colors" placeholder="TYPE MESSAGE...">
                                          <button id="btn-send-${card.id}" onclick="if(!this.disabled) { sendTextMessage('${card.id}'); }" class="w-full bg-pink-600/90 hover:bg-pink-500/90 text-white tracking-wider text-sm font-bold py-3 px-2 rounded-xl shadow-[0_0_15px_rgba(244,114,182,0.3)] active:scale-[0.97] transition-all border border-pink-500/50 cursor-pointer text-center focus:outline-none truncate">${card.btnSend || "SEND"}</button>
                                      </div>`;
                         } else if (card.type === 'text') {
                             let displayTxt = card.val !== undefined ? card.val : "";
-                            html += `<div class="w-full flex-1 flex p-4 bg-black/20 rounded-xl border border-slate-700/50 overflow-y-auto custom-scrollbar min-h-[120px]">
-                                         <div id="val-${card.id}" class="m-auto w-full text-center text-3xl font-bold tracking-tight text-pink-400 drop-shadow-md break-words whitespace-pre-wrap leading-tight">${displayTxt}</div>
+                            html += `<div class="w-full flex-1 flex flex-col justify-center p-4 bg-black/20 rounded-xl border border-slate-700/50 overflow-y-auto custom-scrollbar min-h-[120px]" id="text-container-${card.id}">
+                                         <div id="val-${card.id}" class="w-full text-center text-3xl font-bold tracking-tight text-pink-400 drop-shadow-md break-words whitespace-pre-wrap leading-tight">${displayTxt}</div>
                                      </div>`;
                         } else if (card.type === 'motor') {
                             let mStart = card.val !== undefined ? Number(card.val) : 0; let mDisplayStr = 'STOP (0)';
@@ -490,7 +498,7 @@
                         if (card.mode === 'OUT') {
                             let el = document.getElementById(`text-input-${card.id}`); if(el) el.value = card.val;
                         } else {
-                            let el = document.getElementById(`val-${card.id}`); if(el) el.innerText = card.val; 
+                            updateTextUI(card.id, card.val); 
                         }
                     }
                     else if (card.type === 'audio' && card.val !== oldVal) {
