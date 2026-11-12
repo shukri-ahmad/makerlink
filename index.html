@@ -230,6 +230,16 @@
 
         function updateVal(id, val) { let valEl = document.getElementById(`val-${id}`); if(valEl) valEl.innerText = val + (id.startsWith('S') ? '°' : ''); advancedData[id] = Number(val) || val; }
 
+        function stopRemoteAudio(id) {
+            sendBluetoothCommand(`${id}:STOP`);
+            parseTelemetry(`${id}:STOP`); 
+        }
+
+        function updateVolume(id, val) {
+            audioVolumes[id] = val;
+            if(audioPlayers[id]) audioPlayers[id].volume = val;
+        }
+
         function setServoPos(id, posNum) { 
             let textEl = document.getElementById(`pos${posNum}-val-display-${id}`);
             if (!textEl) return;
@@ -263,16 +273,6 @@
             if (textEl) textEl.innerText = displayStr; 
             advancedData[id] = val; 
             sendBluetoothCommand(`${id}:${val}`); 
-        }
-
-        function stopRemoteAudio(id) {
-            sendBluetoothCommand(`${id}:STOP`);
-            parseTelemetry(`${id}:STOP`); 
-        }
-
-        function updateVolume(id, val) {
-            audioVolumes[id] = val;
-            if(audioPlayers[id]) audioPlayers[id].volume = val;
         }
 
         function createPlayingCard(id, type, mode, startVals) {
@@ -366,7 +366,7 @@
                              <button id="btn-push-${id}" 
                                 onmousedown="if(!isEditMode) { sendBluetoothCommand('${id}:1'); updateDigitalUI('${id}', 1); }" 
                                 onmouseup="if(!isEditMode) { sendBluetoothCommand('${id}:0'); updateDigitalUI('${id}', 0); }" 
-                                onmouseleave="if(!isEditMode && advancedData['${id}'] == 1) { sendBluetoothCommand('${id}:0'); updateDigitalUI('${id}', 0); }"
+                                onmouseleave="if(!isEditMode && advancedData['id'] == 1) { sendBluetoothCommand('${id}:0'); updateDigitalUI('${id}', 0); }"
                                 ontouchstart="if(!isEditMode) { sendBluetoothCommand('${id}:1'); updateDigitalUI('${id}', 1); }"
                                 ontouchend="if(!isEditMode) { sendBluetoothCommand('${id}:0'); updateDigitalUI('${id}', 0); }"
                                 class="w-full py-4 px-2 bg-purple-600/90 hover:bg-purple-500/90 rounded-xl text-white font-bold tracking-widest text-lg shadow-[0_0_20px_rgba(147,51,234,0.4)] active:scale-[0.97] transition-all border border-purple-500/50 text-center cursor-pointer focus:outline-none truncate select-none">HOLD</button>
@@ -609,7 +609,11 @@
 
                     if (info.type === 'analog' && info.mode === 'IN') {
                         let timeEl = document.getElementById(`time-${id}`);
+                        let yminEl = document.getElementById(`ymin-${id}`);
+                        let ymaxEl = document.getElementById(`ymax-${id}`);
                         cardData.time = timeEl ? timeEl.value : "0";
+                        cardData.ymin = yminEl ? yminEl.value : "";
+                        cardData.ymax = ymaxEl ? ymaxEl.value : "";
                     } else if (info.type === 'servo') {
                         let d1 = document.getElementById(`pos1-val-display-${id}`);
                         let d2 = document.getElementById(`pos2-val-display-${id}`);
