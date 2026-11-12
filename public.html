@@ -326,15 +326,14 @@
 
                         html += `</div><div id="title-${card.id}" class="p-3 bg-black/20 border-t ${borderTheme} rounded-b-2xl flex justify-center text-xs font-bold tracking-widest text-slate-400 uppercase cursor-default truncate">${card.title || 'Label'}</div>`;
                         cardEl.innerHTML = html; gridEl.appendChild(cardEl);
-                        
-                        if (card.type === 'analog' && card.mode === 'IN') initChart(card.id);
                     }
 
                     let titleEl = document.getElementById(`title-${card.id}`); if(titleEl) titleEl.innerText = card.title || "Label";
                     
-                    if (card.type === 'analog' && card.mode === 'IN') { let tEl = document.getElementById(`time-${card.id}`); if (tEl && card.time !== undefined) { tEl.value = card.time; } }
-                    
-                    if (card.type === 'audio' && card.val !== oldVal) {
+                    if (card.type === 'text') { 
+                        let el = document.getElementById(`val-${card.id}`); if(el) el.innerText = card.val; 
+                    }
+                    else if (card.type === 'audio' && card.val !== oldVal) {
                         if (String(card.val).startsWith('PLAY')) {
                             let parts = String(card.val).split(':'); let soundType = parts[1] || 'BEEP'; let mode = parts[2] || 'ONCE';
                             if(audioPlayers[card.id]) { audioPlayers[card.id].pause(); }
@@ -358,6 +357,37 @@
                             if(ring) { ring.classList.remove('animate-ping', 'opacity-100'); }
                             if(stat) { stat.innerText = `STATUS: IDLE`; stat.classList.replace('text-cyan-400', 'text-slate-500'); }
                         }
+                    } 
+                    else if (card.type !== 'audio' && card.type !== 'text') { 
+                        let valNum = parseFloat(card.val) || 0;
+                        if (card.type === 'analog' && card.mode === 'IN') { 
+                            let el = document.getElementById(`val-${card.id}`); 
+                            if(el) { el.innerText = valNum; el.style.color = getAnalogColor(valNum); pushChartData(card.id, valNum); }
+                            let chart = sensorCharts[card.id]; 
+                            if(chart) { 
+                                if (card.ymin === "") delete chart.options.scales.y.min; else chart.options.scales.y.min = parseFloat(card.ymin); 
+                                if (card.ymax === "") delete chart.options.scales.y.max; else chart.options.scales.y.max = parseFloat(card.ymax); 
+                                chart.update(); 
+                            }
+                            let tEl = document.getElementById(`time-${card.id}`); if (tEl && card.time !== undefined) { tEl.value = card.time; }
+                        } 
+                        else if (card.type === 'analog' && card.mode === 'OUT') { updateAnalogOutUI(card.id, valNum); }
+                        else if (card.type === 'digital') { updateDigitalUI(card.id, valNum); }
+                        else if (card.type === 'motor') { 
+                            let el = document.getElementById(`val-${card.id}`); 
+                            if (el) { 
+                                let displayStr = 'STOP (0)';
+                                if (valNum !== 0) {
+                                    if (card.id === 'M1' || card.id === 'M2') displayStr = valNum < 0 ? `CW (${Math.abs(valNum)})` : `CCW (${Math.abs(valNum)})`;
+                                    else displayStr = valNum > 0 ? `CW (${Math.abs(valNum)})` : `CCW (${Math.abs(valNum)})`;
+                                }
+                                el.innerText = displayStr; 
+                            } 
+                        }
+                        else if (card.type === 'servo') { 
+                            let el = document.getElementById(`slider-${card.id}`); if(el) el.value = valNum; 
+                            let valEl = document.getElementById(`val-${card.id}`); if(valEl) valEl.innerText = valNum + '°'; 
+                        }
                     }
 
                     if (isOutput) {
@@ -368,7 +398,13 @@
                             else { badge.innerText = "👁️ VIEW ONLY"; badge.className = "ml-2 text-[9px] font-bold tracking-wider border px-2 py-0.5 rounded transition-colors bg-red-900/40 text-red-400 border-red-700/50"; }
                         }
                         
-                        let elsToToggle = [`btn-stop-${card.id}`, `vol-${card.id}`]; 
+                        let elsToToggle = [`btn-stop-${card.id}`, `vol-${card.id}`];
+                        if (card.type === 'analog' && card.mode === 'OUT') elsToToggle = [`slider-${card.id}`];
+                        else if (card.type === 'digital' && card.mode === 'OUT') elsToToggle = [`btn-on-${card.id}`, `btn-off-${card.id}`];
+                        else if (card.type === 'digital' && card.mode === 'PUSH') elsToToggle = [`btn-push-${card.id}`];
+                        else if (card.type === 'motor') elsToToggle = [`btn-ccw-${card.id}`, `btn-cw-${card.id}`, `btn-stop-${card.id}`];
+                        else if (card.type === 'servo') elsToToggle = [`btn-pos1-${card.id}`, `btn-pos2-${card.id}`];
+                        
                         elsToToggle.forEach(eid => {
                             let el = document.getElementById(eid);
                             if(el) { el.disabled = !canControl; if(canControl) { el.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none'); } else { el.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none'); } }
