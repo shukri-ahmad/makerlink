@@ -13,11 +13,35 @@ namespace makerlink {
     export enum MLDigitalStream { D1, D2, D3, D4, D5, D6, D7, D8 }
     export enum MLTextStream { T1, T2, T3, T4 }
     
-    export enum MLAction {
-        //% block="Write"
-        Write,
-        //% block="Read"
-        Read
+    // Custom Pin Dropdowns matching the MotionBit Breakout!
+    export enum MLAnalogInPin {
+        //% block="P0"
+        P0,
+        //% block="P1"
+        P1,
+        //% block="P2"
+        P2
+    }
+
+    export enum MLIOPin {
+        //% block="P0"
+        P0,
+        //% block="P1"
+        P1,
+        //% block="P2"
+        P2,
+        //% block="P9"
+        P9,
+        //% block="P12"
+        P12,
+        //% block="P13"
+        P13,
+        //% block="P14"
+        P14,
+        //% block="P15"
+        P15,
+        //% block="P16"
+        P16
     }
 
     // --- AUDIO ENUMS ---
@@ -58,7 +82,7 @@ namespace makerlink {
     let textVals = ["", "", "", ""];
 
     // ==============================================
-    // UTILITIES
+    // UTILITIES & PIN MAPPING
     // ==============================================
     function getMotorStr(id: MotorID): string { return "M" + (id + 1); }
     function getServoStr(id: ServoID): string { return "S" + (id + 1); }
@@ -66,6 +90,38 @@ namespace makerlink {
     function getDigitalStr(id: MLDigitalStream): string { return "D" + (id + 1); }
     function getTextStr(id: MLTextStream): string { return "T" + (id + 1); }
     function getAudioStr(id: MLAudioID): string { return "B" + (id + 1); }
+
+    // Convert custom dropdowns to physical micro:bit Analog Pins
+    function getAnaInPin(p: MLAnalogInPin): AnalogPin {
+        if (p === MLAnalogInPin.P1) return AnalogPin.P1;
+        if (p === MLAnalogInPin.P2) return AnalogPin.P2;
+        return AnalogPin.P0;
+    }
+    
+    function getAnaOutPin(p: MLIOPin): AnalogPin {
+        if (p === MLIOPin.P1) return AnalogPin.P1;
+        if (p === MLIOPin.P2) return AnalogPin.P2;
+        if (p === MLIOPin.P9) return AnalogPin.P9;
+        if (p === MLIOPin.P12) return AnalogPin.P12;
+        if (p === MLIOPin.P13) return AnalogPin.P13;
+        if (p === MLIOPin.P14) return AnalogPin.P14;
+        if (p === MLIOPin.P15) return AnalogPin.P15;
+        if (p === MLIOPin.P16) return AnalogPin.P16;
+        return AnalogPin.P0;
+    }
+
+    // Convert custom dropdowns to physical micro:bit Digital Pins
+    function getDigiPin(p: MLIOPin): DigitalPin {
+        if (p === MLIOPin.P1) return DigitalPin.P1;
+        if (p === MLIOPin.P2) return DigitalPin.P2;
+        if (p === MLIOPin.P9) return DigitalPin.P9;
+        if (p === MLIOPin.P12) return DigitalPin.P12;
+        if (p === MLIOPin.P13) return DigitalPin.P13;
+        if (p === MLIOPin.P14) return DigitalPin.P14;
+        if (p === MLIOPin.P15) return DigitalPin.P15;
+        if (p === MLIOPin.P16) return DigitalPin.P16;
+        return DigitalPin.P0;
+    }
 
     function applyServoPhysical(idx: number, val: number) {
         let mbServo = MotionBitServoChannel.S1;
@@ -307,51 +363,63 @@ namespace makerlink {
     }
 
     // ==============================================
-    // SMART ROUTERS (HARDWARE ↔ CLOUD LINK)
+    // HARDWARE LINK (CLOUD ↔ PINS)
     // ==============================================
 
     /**
-     * Route a Digital Stream directly to/from a physical pin.
+     * Read physical pin and send to Digital Stream
      */
-    //% block="MakerLink $action digital stream $stream pin $pin"
+    //% block="MakerLink read digital pin $pin and send to stream $stream"
     //% group="Hardware Link"
-    //% weight=75
-    export function linkDigital(action: MLAction, stream: MLDigitalStream, pin: DigitalPin): void {
-        if (action === MLAction.Write) {
-            // Take the Cloud value and output it to the physical Pin
-            let v = digitalVals[stream];
-            pins.digitalWritePin(pin, v);
-        } else {
-            // Read the physical Pin and send it up to the Cloud Dashboard
-            let v = pins.digitalReadPin(pin);
-            // Only send if the value actually changed to prevent flooding Bluetooth!
-            if (digitalVals[stream] !== v) {
-                digitalVals[stream] = v;
-                sendDigital(stream, v);
-            }
+    //% weight=77
+    export function readDigitalToStream(pin: MLIOPin, stream: MLDigitalStream): void {
+        let p = getDigiPin(pin);
+        let v = pins.digitalReadPin(p);
+        // Only transmit to Cloud if the value actually changed
+        if (digitalVals[stream] !== v) {
+            digitalVals[stream] = v;
+            sendDigital(stream, v);
         }
     }
 
     /**
-     * Route an Analog Stream directly to/from a physical pin.
+     * Take Digital Stream value and write to physical pin
      */
-    //% block="MakerLink $action analog stream $stream pin $pin"
+    //% block="MakerLink write digital stream $stream to pin $pin"
+    //% group="Hardware Link"
+    //% weight=76
+    export function writeDigitalFromStream(stream: MLDigitalStream, pin: MLIOPin): void {
+        let p = getDigiPin(pin);
+        let v = digitalVals[stream];
+        pins.digitalWritePin(p, v);
+    }
+
+    /**
+     * Read physical pin and send to Analog Stream
+     */
+    //% block="MakerLink read analog pin $pin and send to stream $stream"
+    //% group="Hardware Link"
+    //% weight=75
+    export function readAnalogToStream(pin: MLAnalogInPin, stream: MLAnalogStream): void {
+        let p = getAnaInPin(pin);
+        let v = pins.analogReadPin(p);
+        // Noise Filter: Only send if value changes by more than 5 to prevent Bluetooth crashes!
+        if (Math.abs(analogVals[stream] - v) > 5) {
+            analogVals[stream] = v;
+            sendAnalog(stream, v);
+        }
+    }
+
+    /**
+     * Take Analog Stream value and write (PWM) to physical pin
+     */
+    //% block="MakerLink write analog stream $stream to pin $pin"
     //% group="Hardware Link"
     //% weight=74
-    export function linkAnalog(action: MLAction, stream: MLAnalogStream, pin: AnalogPin): void {
-        if (action === MLAction.Write) {
-            // Take the Cloud value and output it to the physical Pin (PWM)
-            let v = analogVals[stream];
-            pins.analogWritePin(pin, v);
-        } else {
-            // Read the physical Pin and send it up to the Cloud Dashboard
-            let v = pins.analogReadPin(pin);
-            // Noise Filter: Only send if value changes by more than 5 to prevent Bluetooth crashes!
-            if (Math.abs(analogVals[stream] - v) > 5) {
-                analogVals[stream] = v;
-                sendAnalog(stream, v);
-            }
-        }
+    export function writeAnalogFromStream(stream: MLAnalogStream, pin: MLIOPin): void {
+        let p = getAnaOutPin(pin);
+        let v = analogVals[stream];
+        pins.analogWritePin(p, v);
     }
 
     // ==============================================
